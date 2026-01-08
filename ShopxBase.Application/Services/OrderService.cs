@@ -1,0 +1,124 @@
+namespace ShopxBase.Application.Services;
+
+using ShopxBase.Application.DTOs;
+using ShopxBase.Application.Interfaces;
+using ShopxBase.Domain.Entities;
+using ShopxBase.Domain.Enums;
+using ShopxBase.Domain.Exceptions;
+using ShopxBase.Domain.Interfaces;
+
+/// <summary>
+/// Order service implementation
+/// </summary>
+public class OrderService : IOrderService
+{
+    private readonly IUnitOfWork _unitOfWork;
+
+    public OrderService(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<OrderDto> GetOrderByIdAsync(int id)
+    {
+        var order = await _unitOfWork.Orders.GetByIdAsync(id);
+        if (order == null)
+            throw new EntityNotFoundException(nameof(Order), id);
+
+        return MapToDto(order);
+    }
+
+    public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync()
+    {
+        var orders = await _unitOfWork.Orders.GetAllAsync();
+        return orders.Select(MapToDto);
+    }
+
+    public async Task<IEnumerable<OrderDto>> GetOrdersByUserIdAsync(int userId)
+    {
+        var orders = await _unitOfWork.Orders.GetAllAsync();
+        return orders
+            .Where(o => o.UserId == userId)
+            .Select(MapToDto);
+    }
+
+    public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto)
+    {
+        var order = new Order(createOrderDto.UserId, createOrderDto.ShippingAddress)
+        {
+            Notes = createOrderDto.Notes
+        };
+
+        var createdOrder = await _unitOfWork.Orders.AddAsync(order);
+        await _unitOfWork.SaveChangesAsync();
+
+        return MapToDto(createdOrder);
+    }
+
+    public async Task<OrderDto> UpdateOrderStatusAsync(UpdateOrderStatusDto updateOrderStatusDto)
+    {
+        var order = await _unitOfWork.Orders.GetByIdAsync(updateOrderStatusDto.OrderId);
+        if (order == null)
+            throw new EntityNotFoundException(nameof(Order), updateOrderStatusDto.OrderId);
+
+        order.Status = updateOrderStatusDto.Status;
+        if (updateOrderStatusDto.Status == OrderStatus.Delivered)
+            order.DeliveryDate = DateTime.UtcNow;
+
+        order.UpdatedAt = DateTime.UtcNow;
+
+        var updatedOrder = await _unitOfWork.Orders.UpdateAsync(order);
+        await _unitOfWork.SaveChangesAsync();
+
+        return MapToDto(updatedOrder);
+    }
+
+    public async Task<bool> CancelOrderAsync(int orderId)
+    {
+        var order = await _unitOfWork.Orders.GetByIdAsync(orderId);
+        if (order == null)
+            throw new EntityNotFoundException(nameof(Order), orderId);
+
+        order.Status = OrderStatus.Cancelled;
+        order.PaymentStatus = PaymentStatus.Cancelled;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        await _unitOfWork.Orders.UpdateAsync(order);
+        await _unitOfWork.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<int> GetOrderCountByUserAsync(int userId)
+    {
+        var orders = await _unitOfWork.Orders.GetAllAsync();
+        return orders.Count(o => o.UserId == userId && !o.IsDeleted);
+    }
+
+    private static OrderDto MapToDto(Order order)
+    {
+        return new OrderDto
+        {
+            Id = order.Id,
+            UserId = order.UserId,
+            TotalAmount = order.TotalAmount,
+            Status = order.Status,
+            PaymentStatus = order.PaymentStatus,
+            ShippingAddress = order.ShippingAddress,
+            OrderDate = order.OrderDate,
+            DeliveryDate = order.DeliveryDate,
+            Notes = order.Notes,
+            OrderItems = order.OrderItems?
+                .Select(oi => new OrderItemDto
+                {
+                    Id = oi.Id,
+                    ProductId = oi.ProductId,
+                    ProductName = oi.Product?.Name ?? string.Empty,
+                    Quantity = oi.Quantity,
+                    UnitPrice = oi.UnitPrice,
+                    TotalPrice = oi.TotalPrice
+                })
+                .ToList() ?? new()
+        };
+    }
+}
