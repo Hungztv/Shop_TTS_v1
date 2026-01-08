@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Shopping.Domain.Entities
+namespace ShopxBase.Domain.Entities
 {
     public class ProductQuantity : BaseEntity
     {
