@@ -1,31 +1,72 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+
+
+
 namespace ShopxBase.Domain.Entities;
 
-/// <summary>
-/// Product entity
-/// </summary>
 public class Product : BaseEntity
 {
+    //Basic info
+    [Required, MinLength(4)]
     public string Name { get; set; }
+    public string Slug { get; set; }
+    [Required, MinLength(4)]
     public string Description { get; set; }
+    //Pricing
+    [Required, Column(TypeName = "decimal(18,2)")]
     public decimal Price { get; set; }
+    [Required, Column(TypeName = "decimal(18,2)")]
+    public decimal CapitalPrice { get; set; }
     public int Quantity { get; set; }
-    public string Sku { get; set; }
-    public string Category { get; set; }
-    public bool IsAvailable { get; set; }
+    public int SoldOut { get; set; }
+    // Media
+    public string Image { get; set; }
+    // Foreign Keys
+    public int BrandId { get; set; }
+    public int CategoryId { get; set; }
 
-    public Product()
+    // Navigation Properties
+    public virtual Brand Brand { get; set; }
+    public virtual Category Category { get; set; }
+    public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+    public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+    public virtual ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
+    public virtual ICollection<CompareProduct> CompareProducts { get; set; } = new List<CompareProduct>();
+    //Business Methods
+    public decimal GetaverageRating()
     {
-        IsAvailable = true;
+        if (Ratings == null || Ratings.Any())
+            return 0;
+        return (decimal)Ratings.Average(r => r.Star);
+    }
+    public int GetTotalReviews()
+    {
+        return Ratings?.Count ?? 0;
     }
 
-    public Product(string name, string description, decimal price, int quantity, string sku, string category)
-        : this()
+    public bool IsInStock()
     {
-        Name = name;
-        Description = description;
-        Price = price;
-        Quantity = quantity;
-        Sku = sku;
-        Category = category;
+        return Quantity > 0;
+    }
+
+    public bool CanPurchase(int requestedQuantity)
+    {
+        return Quantity >= requestedQuantity;
+    }
+
+    public void ReduceStock(int quantity)
+    {
+        if (quantity > Quantity)
+            throw new InvalidOperationException("Không đủ hàng trong kho");
+
+        Quantity -= quantity;
+        SoldOut += quantity;
+    }
+
+    public void RestoreStock(int quantity)
+    {
+        Quantity += quantity;
+        SoldOut -= quantity;
     }
 }

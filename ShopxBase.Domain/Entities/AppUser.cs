@@ -1,7 +1,4 @@
 using Microsoft.AspNetCore.Indentity;
-
-
-
 namespace ShopxBase.Domain.Entities
 {
     public class AppUser : IdentityUser
