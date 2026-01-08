@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
-
-
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities;
 
@@ -58,7 +57,7 @@ public class Product : BaseEntity
     public void ReduceStock(int quantity)
     {
         if (quantity > Quantity)
-            throw new InvalidOperationException("Không đủ hàng trong kho");
+            throw new InsufficientStockException($"Không đủ hàng trong kho. Yêu cầu: {quantity}, Có sẵn: {Quantity}");
 
         Quantity -= quantity;
         SoldOut += quantity;

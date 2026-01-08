@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities
 {
@@ -28,6 +29,18 @@ namespace ShopxBase.Domain.Entities
         public decimal GetTotal()
         {
             return Price * Quantity;
+        }
+
+        public void ValidateOrderDetail()
+        {
+            if (Quantity <= 0)
+                throw new InvalidOrderException("Số lượng sản phẩm phải lớn hơn 0");
+
+            if (Price < 0)
+                throw new InvalidOrderException("Giá sản phẩm không được âm");
+
+            if (string.IsNullOrWhiteSpace(ProductName))
+                throw new InvalidProductException("Tên sản phẩm không được để trống");
         }
     }
 }

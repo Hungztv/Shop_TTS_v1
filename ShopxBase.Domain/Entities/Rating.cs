@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities
 {
@@ -35,6 +36,18 @@ namespace ShopxBase.Domain.Entities
         public string GetStarDisplay()
         {
             return new string('★', Star) + new string('☆', 5 - Star);
+        }
+
+        public void ValidateRating()
+        {
+            if (Star < 1 || Star > 5)
+                throw new InvalidProductException("Đánh giá sao phải từ 1 đến 5");
+
+            if (string.IsNullOrWhiteSpace(Comment) || Comment.Length < 4)
+                throw new InvalidProductException("Bình luận phải có ít nhất 4 ký tự");
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                throw new InvalidProductException("Email không hợp lệ");
         }
     }
 }

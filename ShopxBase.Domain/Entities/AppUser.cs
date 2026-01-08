@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Indentity;
+using ShopxBase.Domain.Exceptions;
+
 namespace ShopxBase.Domain.Entities
 {
     public class AppUser : IdentityUser
@@ -22,6 +24,16 @@ namespace ShopxBase.Domain.Entities
         public virtual ICollection<CompareProduct> CompareProducts { get; set; } = new List<CompareProduct>();
         public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
         public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+
+        // Business Methods
+        public void ValidateUser()
+        {
+            if (string.IsNullOrWhiteSpace(UserName))
+                throw new UserNotFoundException("Tên người dùng không được để trống");
+
+            if (string.IsNullOrWhiteSpace(Email))
+                throw new UserNotFoundException("Email không được để trống");
+        }
 
 
     }

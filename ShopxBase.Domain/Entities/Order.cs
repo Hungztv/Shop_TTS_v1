@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities
 {
@@ -73,7 +74,13 @@ namespace ShopxBase.Domain.Entities
 
         public void CalculateTotal()
         {
+            if (Subtotal < 0 || ShippingCost < 0 || DiscountAmount < 0)
+                throw new InvalidOrderException("Không thể tính toán tổng tiền: giá trị âm không hợp lệ");
+
             Total = Subtotal + ShippingCost - DiscountAmount;
+
+            if (Total < 0)
+                throw new InvalidOrderException("Tổng tiền không thể âm");
         }
 
         public bool IsPending()

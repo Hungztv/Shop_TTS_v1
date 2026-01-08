@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities
 {
@@ -26,6 +27,15 @@ namespace ShopxBase.Domain.Entities
         public bool IsActive()
         {
             return Status?.ToLower() == "active";
+        }
+
+        public void ValidateCategory()
+        {
+            if (string.IsNullOrWhiteSpace(Name) || Name.Length < 4)
+                throw new InvalidProductException("Tên danh mục phải có ít nhất 4 ký tự");
+
+            if (string.IsNullOrWhiteSpace(Description) || Description.Length < 4)
+                throw new InvalidProductException("Mô tả danh mục phải có ít nhất 4 ký tự");
         }
     }
 }

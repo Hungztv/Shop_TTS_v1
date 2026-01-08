@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities
 {
@@ -72,7 +73,7 @@ namespace ShopxBase.Domain.Entities
         public void Use()
         {
             if (!IsValid())
-                throw new InvalidOperationException("Mã giảm giá không hợp lệ");
+                throw new InvalidCouponException("Mã giảm giá không hợp lệ hoặc đã hết lượt sử dụng");
 
             UsedCount++;
         }

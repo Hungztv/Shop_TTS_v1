@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities
 {
@@ -28,6 +29,15 @@ namespace ShopxBase.Domain.Entities
         public bool IsActive()
         {
             return Status?.ToLower() == "active";
+        }
+
+        public void ValidateBrand()
+        {
+            if (string.IsNullOrWhiteSpace(Name) || Name.Length < 4)
+                throw new BrandNotFoundException("Tên thương hiệu phải có ít nhất 4 ký tự");
+
+            if (string.IsNullOrWhiteSpace(Description) || Description.Length < 4)
+                throw new BrandNotFoundException("Mô tả thương hiệu phải có ít nhất 4 ký tự");
         }
     }
 }
