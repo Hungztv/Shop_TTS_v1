@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ShopxBase.Domain.Entities
 {
-    public class Category : BaseEntity
+    public class Brand : BaseEntity
     {
         [Required, MinLength(4)]
         public string Name { get; set; }
@@ -13,6 +13,8 @@ namespace ShopxBase.Domain.Entities
         public string Slug { get; set; }
 
         public string Status { get; set; }
+
+        public string Logo { get; set; }
 
         // Navigation Properties
         public virtual ICollection<Product> Products { get; set; } = new List<Product>();
