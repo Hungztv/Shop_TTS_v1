@@ -1,28 +1,11 @@
 namespace ShopxBase.Domain.Enums;
 
-/// <summary>
-/// Order status enumeration
-/// </summary>
 public enum OrderStatus
 {
-    /// <summary>Pending - Chờ xử lý</summary>
-    Pending = 0,
-
-    /// <summary>Confirmed - Đã xác nhận</summary>
-    Confirmed = 1,
-
-    /// <summary>Processing - Đang xử lý</summary>
-    Processing = 2,
-
-    /// <summary>Shipped - Đã gửi</summary>
-    Shipped = 3,
-
-    /// <summary>Delivered - Đã giao</summary>
-    Delivered = 4,
-
-    /// <summary>Cancelled - Đã hủy</summary>
-    Cancelled = 5,
-
-    /// <summary>Returned - Đã trả lại</summary>
-    Returned = 6
+    Pending = 0,      // Chờ xử lý
+    Confirmed = 1,    // Đã xác nhận
+    Shipping = 2,     // Đang giao
+    Completed = 3,    // Đã giao
+    Cancelled = 4,    // Đã hủy
+    Refunded = 5      // Đã hoàn tiền (nếu áp dụng)
 }
