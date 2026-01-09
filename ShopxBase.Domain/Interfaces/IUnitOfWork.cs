@@ -17,7 +17,6 @@ public interface IUnitOfWork : IDisposable
     IRepository<Slider> Sliders { get; }
     IRepository<Contact> Contacts { get; }
 
-    // Specialized repositories
     IProductRepository ProductRepository { get; }
     IOrderRepository OrderRepository { get; }
     ICouponRepository CouponRepository { get; }

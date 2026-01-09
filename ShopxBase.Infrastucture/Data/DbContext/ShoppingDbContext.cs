@@ -1,92 +1,33 @@
-namespace ShopxBase.Infrastructure.Data.DbContext;
-
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ShopxBase.Domain.Entities;
 
-/// <summary>
-/// Shopping database context
-/// </summary>
-public class ShoppingDbContext : DbContext
+namespace ShopxBase.Infrastructure.Data;
+
+public class ShopxDbContext : IdentityDbContext<AppUser>
 {
-    public ShoppingDbContext(DbContextOptions<ShoppingDbContext> options) : base(options)
+    public ShopxDbContext(DbContextOptions<ShopxDbContext> options) : base(options)
     {
     }
-
-    /// <summary>
-    /// Products table
-    /// </summary>
+    //DB sets
     public DbSet<Product> Products { get; set; }
-
-    /// <summary>
-    /// Users table
-    /// </summary>
-    public DbSet<User> Users { get; set; }
-
-    /// <summary>
-    /// Orders table
-    /// </summary>
+    public DbSet<Category> Categories { get; set; }
+    public DbSet<Brand> Brands { get; set; }
     public DbSet<Order> Orders { get; set; }
+    public DbSet<OrderDetail> OrderDetails { get; set; }
+    public DbSet<Coupon> Coupons { get; set; }
+    public DbSet<Rating> Ratings { get; set; }
+    public DbSet<Wishlist> Wishlists { get; set; }
+    public DbSet<CompareProduct> CompareProducts { get; set; }
+    public DbSet<Slider> Sliders { get; set; }
+    public DbSet<Contact> Contacts { get; set; }
+    public DbSet<ProductQuantity> ProductQuantities { get; set; }
+    public DbSet<Shipping> Shippings { get; set; }
 
-    /// <summary>
-    /// Order Items table
-    /// </summary>
-    public DbSet<OrderItem> OrderItems { get; set; }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(builder);
 
-        // Configure Product entity
-        modelBuilder.Entity<Product>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(256);
-            entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.Price).HasPrecision(18, 2);
-            entity.Property(e => e.Sku).HasMaxLength(50);
-            entity.Property(e => e.Category).HasMaxLength(100);
-        });
-
-        // Configure User entity
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(256);
-            entity.Property(e => e.FullName).HasMaxLength(256);
-            entity.Property(e => e.PasswordHash).IsRequired();
-            entity.Property(e => e.PhoneNumber).HasMaxLength(20);
-        });
-
-        // Configure Order entity
-        modelBuilder.Entity<Order>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
-            entity.Property(e => e.ShippingAddress).HasMaxLength(500);
-            entity.Property(e => e.Notes).HasMaxLength(1000);
-
-            // Configure relationships
-            entity.HasOne(e => e.User)
-                .WithMany()
-                .HasForeignKey(e => e.UserId);
-
-            entity.HasMany(e => e.OrderItems)
-                .WithOne(oi => oi.Order)
-                .HasForeignKey(oi => oi.OrderId);
-        });
-
-        // Configure OrderItem entity
-        modelBuilder.Entity<OrderItem>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
-            entity.Property(e => e.TotalPrice).HasPrecision(18, 2);
-
-            // Configure relationships
-            entity.HasOne(e => e.Product)
-                .WithMany()
-                .HasForeignKey(e => e.ProductId);
-        });
+        builder.ApplyConfigurationsFromAssembly(typeof(ShopxDbContext).Assembly);
     }
 }
