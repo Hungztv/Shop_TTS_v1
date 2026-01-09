@@ -1,6 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using ShopxBase.Domain.Entities;
+using ShopxBase.Domain.Interfaces;
+
 namespace ShopxBase.Domain.Interfaces;
 
-using ShopxBase.Domain.Entities;
+
 
 public interface IUnitOfWork : IDisposable
 {

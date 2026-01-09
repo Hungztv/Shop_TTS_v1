@@ -18,7 +18,7 @@ builder.Services.AddSwaggerGen();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Server=(localdb)\\mssqllocaldb;Database=ShoppingDB;Trusted_Connection=true;";
 
-builder.Services.AddDbContext<ShoppingDbContext>(options =>
+builder.Services.AddDbContext<ShopxBaseDbContext>(options =>
     options.UseSqlServer(connectionString)
 );
 

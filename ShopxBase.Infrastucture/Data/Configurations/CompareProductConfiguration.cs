@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Shopping.Domain.Entities;
+using ShopxBase.Domain.Entities;
 
-namespace Shopping.Infrastructure.Data.Configurations
+namespace ShopxBase.Infrastructure.Data.Configurations
 {
     public class CompareProductConfiguration : IEntityTypeConfiguration<CompareProduct>
     {

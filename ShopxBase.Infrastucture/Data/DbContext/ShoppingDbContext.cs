@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Shopping.Domain.Entities;
+using ShopxBase.Domain.Entities;
 
-namespace Shopping.Infrastructure.Data
+namespace ShopxBase.Infrastructure.Data
 {
-    public class ShoppingDbContext : IdentityDbContext<AppUser>
+    public class ShopxBaseDbContext : IdentityDbContext<AppUser>
     {
-        public ShoppingDbContext(DbContextOptions<ShoppingDbContext> options) : base(options)
+        public ShopxBaseDbContext(DbContextOptions<ShopxBaseDbContext> options) : base(options)
         {
         }
 
@@ -28,7 +28,7 @@ namespace Shopping.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(ShoppingDbContext).Assembly);
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(ShopxBaseDbContext).Assembly);
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

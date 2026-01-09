@@ -1,82 +1,90 @@
-namespace ShopxBase.Infrastructure.Data;
-
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Domain.Interfaces;
-using ShopxBase.Infrastructure.Data.DbContext;
 using ShopxBase.Infrastructure.Data.Repositories;
-using Microsoft.EntityFrameworkCore.Storage;
 
-/// <summary>
-/// Unit of Work implementation
-/// </summary>
-public class UnitOfWork : IUnitOfWork
+namespace ShopxBase.Infrastructure.Data
 {
-    private readonly ShoppingDbContext _context;
-    private IDbContextTransaction _transaction;
-
-    private IRepository<Product> _productRepository;
-    private IRepository<Order> _orderRepository;
-    private IRepository<User> _userRepository;
-
-    public UnitOfWork(ShoppingDbContext context)
+    public class UnitOfWork : IUnitOfWork
     {
-        _context = context;
-    }
+        private readonly DbContext _context;
 
-    public IRepository<Product> Products =>
-        _productRepository ??= new ProductRepository(_context);
+        private readonly Dictionary<string, object> _repositories;
 
-    public IRepository<Order> Orders =>
-        _orderRepository ??= new Repository<Order>(_context);
-
-    public IRepository<User> Users =>
-        _userRepository ??= new Repository<User>(_context);
-
-    public async Task<int> SaveChangesAsync()
-    {
-        return await _context.SaveChangesAsync();
-    }
-
-    public async Task BeginTransactionAsync()
-    {
-        _transaction = await _context.Database.BeginTransactionAsync();
-    }
-
-    public async Task CommitAsync()
-    {
-        try
+        public UnitOfWork(DbContext context)
         {
-            await SaveChangesAsync();
-            await _transaction?.CommitAsync();
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _repositories = new Dictionary<string, object>();
         }
-        catch
-        {
-            await RollbackAsync();
-            throw;
-        }
-        finally
-        {
-            _transaction?.Dispose();
-            _transaction = null;
-        }
-    }
 
-    public async Task RollbackAsync()
-    {
-        try
-        {
-            await _transaction?.RollbackAsync();
-        }
-        finally
-        {
-            _transaction?.Dispose();
-            _transaction = null;
-        }
-    }
+        // Generic Repositories (Basic CRUD)
+        public IRepository<Product> Products => GetRepository<Product>();
+        public IRepository<Category> Categories => GetRepository<Category>();
+        public IRepository<Brand> Brands => GetRepository<Brand>();
+        public IRepository<Order> Orders => GetRepository<Order>();
+        public IRepository<OrderDetail> OrderDetails => GetRepository<OrderDetail>();
+        public IRepository<AppUser> Users => GetRepository<AppUser>();
+        public IRepository<Coupon> Coupons => GetRepository<Coupon>();
+        public IRepository<Rating> Ratings => GetRepository<Rating>();
+        public IRepository<Wishlist> Wishlists => GetRepository<Wishlist>();
+        public IRepository<CompareProduct> CompareProducts => GetRepository<CompareProduct>();
+        public IRepository<Slider> Sliders => GetRepository<Slider>();
+        public IRepository<Contact> Contacts => GetRepository<Contact>();
 
-    public void Dispose()
-    {
-        _transaction?.Dispose();
-        _context?.Dispose();
+        // Specialized Repositories (Custom Queries)
+        private IProductRepository _productRepository;
+        public IProductRepository ProductRepository
+        {
+            get { return _productRepository ??= new ProductRepository(_context); }
+        }
+
+        private IOrderRepository _orderRepository;
+        public IOrderRepository OrderRepository
+        {
+            get { return _orderRepository ??= new OrderRepository(_context); }
+        }
+
+        private ICouponRepository _couponRepository;
+        public ICouponRepository CouponRepository
+        {
+            get { return _couponRepository ??= new CouponRepository(_context); }
+        }
+
+
+        public async Task<int> SaveChangesAsync()
+        {
+            return await _context.SaveChangesAsync();
+        }
+
+        public int SaveChanges()
+        {
+            return _context.SaveChanges();
+        }
+
+        public void Dispose()
+        {
+            _context.Dispose();
+        }
+
+        // Helper function
+        private IRepository<TEntity> GetRepository<TEntity>() where TEntity : BaseEntity
+        {
+            var type = typeof(TEntity).Name;
+
+            if (!_repositories.ContainsKey(type))
+            {
+                var repositoryType = typeof(Repository<>);
+                var repositoryInstance = Activator.CreateInstance(
+                    repositoryType.MakeGenericType(typeof(TEntity)),
+                    _context
+                );
+                _repositories.Add(type, repositoryInstance);
+            }
+
+            return (IRepository<TEntity>)_repositories[type];
+        }
     }
 }
