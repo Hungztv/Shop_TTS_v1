@@ -15,7 +15,7 @@ namespace ShopxBase.Infrastructure.Data.Configurations
 
             // 2. Cấu hình các thuộc tính (Properties)
             builder.Property(e => e.Name)
-                .IsRequired()           // Không được null
+                .IsRequired()           
                 .HasMaxLength(200);
 
             builder.Property(e => e.Slug)
