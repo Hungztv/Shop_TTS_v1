@@ -25,16 +25,12 @@ public class ProductMappingProfile : Profile
 			.ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-			.ForMember(dest => dest.Brand, opt => opt.Ignore())
-			.ForMember(dest => dest.Category, opt => opt.Ignore())
-			.ForMember(dest => dest.Ratings, opt => opt.Ignore())
-			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore());
-
-		// UpdateProductDto -> Product Entity (Update)
+			.ForMember(dest => dest.CapitalPrice, opt => opt.MapFrom(src => src.CapitalPrice))
 		CreateMap<UpdateProductDto, Product>()
 			.ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+			.ForMember(dest => dest.CapitalPrice, opt => opt.MapFrom(src => src.CapitalPrice))
 			.ForMember(dest => dest.Brand, opt => opt.Ignore())
 			.ForMember(dest => dest.Category, opt => opt.Ignore())
 			.ForMember(dest => dest.Ratings, opt => opt.Ignore())

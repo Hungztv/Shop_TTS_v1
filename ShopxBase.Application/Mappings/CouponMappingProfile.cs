@@ -11,11 +11,11 @@ public class CouponMappingProfile : Profile
         // Coupon Entity -> CouponDto (Read)
         CreateMap<Coupon, CouponDto>()
             .ForMember(dest => dest.AvailableCount,
-                       opt => opt.MapFrom(src => src.MaxUsage - src.UsedCount))
+                       opt => opt.MapFrom(src => src.Quantity - src.UsedCount))
             .ForMember(dest => dest.IsValid,
                        opt => opt.MapFrom(src => src.IsValid()))
             .ForMember(dest => dest.IsExpired,
-                       opt => opt.MapFrom(src => src.EndDate.HasValue && src.EndDate.Value < DateTime.Now));
+                       opt => opt.MapFrom(src => src.DateExpired < DateTime.Now));
 
         // CreateCouponDto -> Coupon Entity (Create)
         CreateMap<CreateCouponDto, Coupon>()
