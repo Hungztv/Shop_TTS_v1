@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ShopxBase.Application.DTOs.Rating;
 
-/// <summary>
-/// Rating DTO for read operations
-/// </summary>
+
 public class RatingDto
 {
     public int Id { get; set; }
@@ -21,9 +19,7 @@ public class RatingDto
     public DateTime CreatedAt { get; set; }
 }
 
-/// <summary>
-/// Create Rating DTO
-/// </summary>
+
 public class CreateRatingDto
 {
     [Required(ErrorMessage = "Bình luận là bắt buộc")]
@@ -51,9 +47,9 @@ public class CreateRatingDto
     public string UserId { get; set; }
 }
 
-/// <summary>
+
 /// Update Rating DTO
-/// </summary>
+
 public class UpdateRatingDto
 {
     public int Id { get; set; }

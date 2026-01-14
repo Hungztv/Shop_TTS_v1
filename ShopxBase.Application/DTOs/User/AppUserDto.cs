@@ -15,9 +15,6 @@ public class AppUserDto
     public DateTime? LastLoginAt { get; set; }
 }
 
-/// <summary>
-/// Update User Profile DTO
-/// </summary>
 public class UpdateUserProfileDto
 {
     public string Id { get; set; }
