@@ -32,6 +32,7 @@ public class ProductMappingProfile : Profile
 			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore());
 
 		// UpdateProductDto -> Product Entity (Update)
+		CreateMap<UpdateProductDto, Product>()
 			.ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
