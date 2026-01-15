@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Application.DTOs.Product;
+using ShopxBase.Application.Features.Products.Commands.CreateProduct;
+using ShopxBase.Application.Features.Products.Commands.UpdateProduct;
 
 namespace ShopxBase.Application.Mappings;
 
@@ -17,29 +19,63 @@ public class ProductMappingProfile : Profile
 			.ForMember(dest => dest.AverageRating,
 					   opt => opt.MapFrom(src => src.Ratings != null && src.Ratings.Any()
 												 ? src.Ratings.Average(r => r.Star)
-												 : 0));
+												 : 0))
+			.ForMember(dest => dest.TotalReviews,
+					   opt => opt.MapFrom(src => src.Ratings != null ? src.Ratings.Count : 0))
+			.ForMember(dest => dest.IsInStock,
+					   opt => opt.MapFrom(src => src.IsInStock()));
 
-		// CreateProductDto -> Product Entity (Create)
-		CreateMap<CreateProductDto, Product>()
+		// CreateProductCommand -> Product Entity
+		CreateMap<CreateProductCommand, Product>()
 			.ForMember(dest => dest.Id, opt => opt.Ignore())
+			.ForMember(dest => dest.SoldOut, opt => opt.MapFrom(src => 0))
 			.ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-			.ForMember(dest => dest.CapitalPrice, opt => opt.MapFrom(src => src.CapitalPrice))
 			.ForMember(dest => dest.Brand, opt => opt.Ignore())
 			.ForMember(dest => dest.Category, opt => opt.Ignore())
 			.ForMember(dest => dest.Ratings, opt => opt.Ignore())
-			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore());
+			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
+			.ForMember(dest => dest.Wishlists, opt => opt.Ignore())
+			.ForMember(dest => dest.CompareProducts, opt => opt.Ignore());
 
-		// UpdateProductDto -> Product Entity (Update)
+		// UpdateProductCommand -> Product Entity
+		CreateMap<UpdateProductCommand, Product>()
+			.ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+			.ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+			.ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+			.ForMember(dest => dest.SoldOut, opt => opt.Ignore())
+			.ForMember(dest => dest.Brand, opt => opt.Ignore())
+			.ForMember(dest => dest.Category, opt => opt.Ignore())
+			.ForMember(dest => dest.Ratings, opt => opt.Ignore())
+			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
+			.ForMember(dest => dest.Wishlists, opt => opt.Ignore())
+			.ForMember(dest => dest.CompareProducts, opt => opt.Ignore());
+
+		// Legacy DTOs support (if still used elsewhere)
+		CreateMap<CreateProductDto, Product>()
+			.ForMember(dest => dest.Id, opt => opt.Ignore())
+			.ForMember(dest => dest.SoldOut, opt => opt.MapFrom(src => 0))
+			.ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+			.ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+			.ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+			.ForMember(dest => dest.Brand, opt => opt.Ignore())
+			.ForMember(dest => dest.Category, opt => opt.Ignore())
+			.ForMember(dest => dest.Ratings, opt => opt.Ignore())
+			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
+			.ForMember(dest => dest.Wishlists, opt => opt.Ignore())
+			.ForMember(dest => dest.CompareProducts, opt => opt.Ignore());
+
 		CreateMap<UpdateProductDto, Product>()
 			.ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
 			.ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-			.ForMember(dest => dest.CapitalPrice, opt => opt.MapFrom(src => src.CapitalPrice))
+			.ForMember(dest => dest.SoldOut, opt => opt.Ignore())
 			.ForMember(dest => dest.Brand, opt => opt.Ignore())
 			.ForMember(dest => dest.Category, opt => opt.Ignore())
 			.ForMember(dest => dest.Ratings, opt => opt.Ignore())
-			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore());
+			.ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
+			.ForMember(dest => dest.Wishlists, opt => opt.Ignore())
+			.ForMember(dest => dest.CompareProducts, opt => opt.Ignore());
 	}
 }
