@@ -103,3 +103,18 @@ public class UpdateOrderStatusDto
     public int Id { get; set; }
     public int Status { get; set; }
 }
+
+public class OrderListItemDto
+{
+    public int Id { get; set; }
+    public string OrderCode { get; set; }
+    public string Name { get; set; }
+    public string PhoneNumber { get; set; }
+    public decimal Total { get; set; }
+    public int Status { get; set; }
+    public string StatusText { get; set; }
+    public string PaymentMethod { get; set; }
+    public string PaymentStatus { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int TotalItems { get; set; }
+}

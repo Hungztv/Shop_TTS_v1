@@ -1,17 +1,13 @@
 namespace ShopxBase.Application.DTOs.Common;
 
-/// <summary>
-/// Pagination request DTO
-/// </summary>
+
 public class PaginationRequest
 {
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 10;
 }
 
-/// <summary>
-/// Pagination response DTO
-/// </summary>
+
 public class PaginationResponse<T>
 {
     public IEnumerable<T> Items { get; set; }
@@ -23,9 +19,7 @@ public class PaginationResponse<T>
     public bool HasNext => PageNumber < TotalPages;
 }
 
-/// <summary>
-/// API Response DTO
-/// </summary>
+
 public class ApiResponse<T>
 {
     public bool Success { get; set; }
@@ -51,5 +45,35 @@ public class ApiResponse<T>
             Message = message,
             Errors = errors ?? new List<string>()
         };
+    }
+}
+
+public class PaginatedResult<T>
+{
+    public List<T> Items { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => PageSize > 0
+        ? (int)Math.Ceiling(TotalCount / (double)PageSize)
+        : 0;
+    public bool HasPreviousPage => PageNumber > 1;
+    public bool HasNextPage => PageNumber < TotalPages;
+
+    public PaginatedResult()
+    {
+    }
+
+    public PaginatedResult(List<T> items, int totalCount, int pageNumber, int pageSize)
+    {
+        Items = items;
+        TotalCount = totalCount;
+        PageNumber = pageNumber;
+        PageSize = pageSize;
+    }
+
+    public static PaginatedResult<T> Create(List<T> items, int totalCount, int pageNumber, int pageSize)
+    {
+        return new PaginatedResult<T>(items, totalCount, pageNumber, pageSize);
     }
 }
