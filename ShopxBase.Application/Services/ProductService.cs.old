@@ -1,11 +1,12 @@
-namespace ShopxBase.Application.Services;
 
-using ShopxBase.Application.DTOs;
+
+using ShopxBase.Application.DTOs.Product;
 using ShopxBase.Application.Interfaces;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Domain.Exceptions;
 using ShopxBase.Domain.Interfaces;
 
+namespace ShopxBase.Application.Services;
 /// <summary>
 /// Product service implementation
 /// </summary>

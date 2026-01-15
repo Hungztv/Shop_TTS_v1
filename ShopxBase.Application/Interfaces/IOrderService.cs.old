@@ -1,6 +1,6 @@
 namespace ShopxBase.Application.Interfaces;
 
-using ShopxBase.Application.DTOs;
+using ShopxBase.Application.DTOs.Order;
 
 /// <summary>
 /// Order service interface

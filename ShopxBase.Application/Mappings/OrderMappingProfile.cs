@@ -11,20 +11,16 @@ public class OrderMappingProfile : Profile
         // Order Entity -> OrderDto (Read)
         CreateMap<Order, OrderDto>()
             .ForMember(dest => dest.StatusText,
-                       opt => opt.MapFrom(src => src.Status.ToString()))
-            .ForMember(dest => dest.PaymentMethodText,
-                       opt => opt.MapFrom(src => src.PaymentMethod.ToString()))
-            .ForMember(dest => dest.PaymentStatusText,
-                       opt => opt.MapFrom(src => src.PaymentStatus.ToString()))
+                       opt => opt.MapFrom(src => src.GetStatusText()))
             .ForMember(dest => dest.OrderDetails,
                        opt => opt.MapFrom(src => src.OrderDetails));
 
         // OrderDetail Entity -> OrderDetailDto
         CreateMap<OrderDetail, OrderDetailDto>()
             .ForMember(dest => dest.ProductName,
-                       opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null))
+                       opt => opt.MapFrom(src => src.ProductName))
             .ForMember(dest => dest.ProductImage,
-                       opt => opt.MapFrom(src => src.Product != null ? src.Product.Image : null))
+                       opt => opt.MapFrom(src => src.ProductImage))
             .ForMember(dest => dest.Total,
                        opt => opt.MapFrom(src => src.Price * src.Quantity));
 

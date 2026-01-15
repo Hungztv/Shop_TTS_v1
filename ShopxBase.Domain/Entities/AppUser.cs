@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Indentity;
+using Microsoft.AspNetCore.Identity;
 using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Domain.Entities

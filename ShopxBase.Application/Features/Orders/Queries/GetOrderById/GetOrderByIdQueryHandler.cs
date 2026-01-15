@@ -1,11 +1,12 @@
 using MediatR;
 using AutoMapper;
 using ShopxBase.Domain.Interfaces;
+using ShopxBase.Domain.Exceptions;
 using ShopxBase.Application.DTOs.Order;
 
 namespace ShopxBase.Application.Features.Orders.Queries.GetOrderById;
 
-public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
+public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, OrderDto?>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
@@ -16,9 +17,19 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Order
         _mapper = mapper;
     }
 
-    public async Task<OrderDto> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
+    public async Task<OrderDto?> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
     {
-        // TODO: Implement handler logic
-        throw new NotImplementedException();
+        // Get order with details using specialized repository
+        var order = await _unitOfWork.OrderRepository.GetWithDetailsAsync(request.OrderId);
+
+        if (order == null)
+        {
+            throw OrderNotFoundException.ById(request.OrderId);
+        }
+
+        // Map to DTO
+        var orderDto = _mapper.Map<OrderDto>(order);
+
+        return orderDto;
     }
 }

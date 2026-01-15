@@ -73,7 +73,7 @@ namespace ShopxBase.Domain.Entities
         public void Use()
         {
             if (!IsValid())
-                throw new InvalidCouponException("Mã giảm giá không hợp lệ hoặc đã hết lượt sử dụng");
+                throw InvalidCouponException.Inactive(Code);
 
             UsedCount++;
         }

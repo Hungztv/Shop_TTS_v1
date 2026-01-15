@@ -2,11 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ShopxBase.Domain.Entities
 {
-    public class Contact
+    public class Contact : BaseEntity
     {
-        [Key]
-        public int Id { get; set; }
-
         [Required]
         public string Name { get; set; }
 

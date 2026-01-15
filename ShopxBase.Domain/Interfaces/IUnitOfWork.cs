@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
 using ShopxBase.Domain.Entities;
-using ShopxBase.Domain.Interfaces;
 
 namespace ShopxBase.Domain.Interfaces;
 
@@ -13,7 +11,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Brand> Brands { get; }
     IRepository<Order> Orders { get; }
     IRepository<OrderDetail> OrderDetails { get; }
-    IRepository<AppUser> Users { get; }
+    IUserRepository Users { get; }  // Special repository for Identity users
     IRepository<Coupon> Coupons { get; }
     IRepository<Rating> Ratings { get; }
     IRepository<Wishlist> Wishlists { get; }

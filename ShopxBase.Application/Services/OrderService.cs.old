@@ -1,6 +1,6 @@
 namespace ShopxBase.Application.Services;
 
-using ShopxBase.Application.DTOs;
+using ShopxBase.Application.DTOs.Order;
 using ShopxBase.Application.Interfaces;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Domain.Enums;

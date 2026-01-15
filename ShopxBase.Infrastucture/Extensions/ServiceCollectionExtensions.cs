@@ -20,9 +20,12 @@ namespace ShopxBase.Infrastructure.Extensions
                 throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
             // Register DbContext
-            services.AddDbContext<ShoppingDbContext>(options =>
+            services.AddDbContext<ShopxBaseDbContext>(options =>
                 options.UseSqlServer(connectionString,
                     sqlServerOptions => sqlServerOptions.CommandTimeout(30)));
+
+            // Also register DbContext as abstract type for UnitOfWork injection
+            services.AddScoped<DbContext>(sp => sp.GetRequiredService<ShopxBaseDbContext>());
 
             // Register Generic Repository<T> - for all basic CRUD operations
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -31,13 +34,14 @@ namespace ShopxBase.Infrastructure.Extensions
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<ICouponRepository, CouponRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
 
             // Register Unit of Work - manages all repositories and transactions
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-            // Register External Services
-            services.AddScoped<IEmailService, EmailService>();
-            services.AddScoped<IPaymentService, PaymentService>();
+            // Register External Services (TODO: implement these services)
+            // services.AddScoped<IEmailService, EmailService>();
+            // services.AddScoped<IPaymentService, PaymentService>();
 
             return services;
         }

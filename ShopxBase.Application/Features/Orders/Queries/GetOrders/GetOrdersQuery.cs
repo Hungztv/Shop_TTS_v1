@@ -4,7 +4,15 @@ using ShopxBase.Application.DTOs.Common;
 
 namespace ShopxBase.Application.Features.Orders.Queries.GetOrders;
 
-public class GetOrdersQuery : IRequest<PaginationResponse<OrderDto>>
+public class GetOrdersQuery : IRequest<PaginationResponse<OrderListItemDto>>
 {
-    // TODO: Add properties
+    // Pagination
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+
+    // Filters (optional)
+    public string? UserId { get; set; }
+    public int? Status { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
 }

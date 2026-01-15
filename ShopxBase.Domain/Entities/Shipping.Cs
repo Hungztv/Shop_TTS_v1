@@ -6,9 +6,16 @@ namespace ShopxBase.Domain.Entities
     public class Shipping : BaseEntity
     {
         [Required]
-        public string Province { get; set; }
+        [MaxLength(50)]
+        public string Ward { get; set; }
 
+        [Required]
+        [MaxLength(50)]
         public string District { get; set; }
+
+        [Required]
+        [MaxLength(50)]
+        public string City { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }

@@ -18,22 +18,6 @@ public class DomainException : Exception
 }
 
 
-public class InsufficientStockException : DomainException
-{
-    private const string ErrorCode = "INSUFFICIENT_STOCK";
-
-    public InsufficientStockException(string message)
-        : base(message, ErrorCode)
-    {
-    }
-
-    public InsufficientStockException(string message, Exception innerException)
-        : base(message, innerException, ErrorCode)
-    {
-    }
-}
-
-
 public class InvalidProductException : DomainException
 {
     private const string ErrorCode = "INVALID_PRODUCT";
@@ -44,22 +28,6 @@ public class InvalidProductException : DomainException
     }
 
     public InvalidProductException(string message, Exception innerException)
-        : base(message, innerException, ErrorCode)
-    {
-    }
-}
-
-
-public class InvalidCouponException : DomainException
-{
-    private const string ErrorCode = "INVALID_COUPON";
-
-    public InvalidCouponException(string message)
-        : base(message, ErrorCode)
-    {
-    }
-
-    public InvalidCouponException(string message, Exception innerException)
         : base(message, innerException, ErrorCode)
     {
     }

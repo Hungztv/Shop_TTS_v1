@@ -27,19 +27,13 @@ public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, Paginat
         // 2. Map entities to DTOs
         var productDtos = _mapper.Map<List<ProductDto>>(products);
 
-        // 3. Calculate pagination info
-        var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
-        var hasNextPage = request.PageNumber < totalPages;
-        var hasPreviousPage = request.PageNumber > 1;
-
-        // 4. Return pagination response
+        // 3. Return pagination response (TotalPages, HasNext, HasPrevious are computed)
         return new PaginationResponse<ProductDto>
         {
             Items = productDtos,
             TotalCount = totalCount,
-            TotalPages = totalPages,
-            HasNext = hasNextPage,
-            HasPrevious = hasPreviousPage
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize
         };
     }
 }

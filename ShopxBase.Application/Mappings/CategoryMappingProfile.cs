@@ -21,17 +21,13 @@ public class CategoryMappingProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-            .ForMember(dest => dest.Products, opt => opt.Ignore())
-            .ForMember(dest => dest.Parent, opt => opt.Ignore())
-            .ForMember(dest => dest.Children, opt => opt.Ignore());
+            .ForMember(dest => dest.Products, opt => opt.Ignore());
 
         // UpdateCategoryDto -> Category Entity (Update)
         CreateMap<UpdateCategoryDto, Category>()
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-            .ForMember(dest => dest.Products, opt => opt.Ignore())
-            .ForMember(dest => dest.Parent, opt => opt.Ignore())
-            .ForMember(dest => dest.Children, opt => opt.Ignore());
+            .ForMember(dest => dest.Products, opt => opt.Ignore());
     }
 }

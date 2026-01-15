@@ -26,7 +26,6 @@ namespace ShopxBase.Infrastructure.Data
         public IRepository<Brand> Brands => GetRepository<Brand>();
         public IRepository<Order> Orders => GetRepository<Order>();
         public IRepository<OrderDetail> OrderDetails => GetRepository<OrderDetail>();
-        public IRepository<AppUser> Users => GetRepository<AppUser>();
         public IRepository<Coupon> Coupons => GetRepository<Coupon>();
         public IRepository<Rating> Ratings => GetRepository<Rating>();
         public IRepository<Wishlist> Wishlists => GetRepository<Wishlist>();
@@ -35,6 +34,12 @@ namespace ShopxBase.Infrastructure.Data
         public IRepository<Contact> Contacts => GetRepository<Contact>();
 
         // Specialized Repositories (Custom Queries)
+        private IUserRepository _userRepository;
+        public IUserRepository Users
+        {
+            get { return _userRepository ??= new UserRepository(_context); }
+        }
+
         private IProductRepository _productRepository;
         public IProductRepository ProductRepository
         {

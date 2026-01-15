@@ -57,7 +57,7 @@ public class Product : BaseEntity
     public void ReduceStock(int quantity)
     {
         if (quantity > Quantity)
-            throw new InsufficientStockException($"Không đủ hàng trong kho. Yêu cầu: {quantity}, Có sẵn: {Quantity}");
+            throw InsufficientStockException.For(Name, quantity, Quantity);
 
         Quantity -= quantity;
         SoldOut += quantity;
