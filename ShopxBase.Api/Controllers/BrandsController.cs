@@ -7,14 +7,14 @@ using ShopxBase.Application.Features.Brands.Queries.GetBrandById;
 
 namespace ShopxBase.Api.Controllers;
 
-/// <summary>
+
 /// Brands API Controller - CQRS Pattern
-/// </summary>
+
 public class BrandsController : BaseApiController
 {
-    /// <summary>
+
     /// Lấy danh sách brands với pagination
-    /// </summary>
+
     [HttpGet]
     public async Task<IActionResult> GetBrands([FromQuery] GetBrandsQuery query)
     {
@@ -22,9 +22,9 @@ public class BrandsController : BaseApiController
         return Success(result);
     }
 
-    /// <summary>
+
     /// Lấy brand theo ID
-    /// </summary>
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -32,9 +32,9 @@ public class BrandsController : BaseApiController
         return Success(result);
     }
 
-    /// <summary>
+
     /// Tạo brand mới
-    /// </summary>
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateBrandCommand command)
     {
@@ -42,9 +42,9 @@ public class BrandsController : BaseApiController
         return Success(result, "Tạo thương hiệu thành công");
     }
 
-    /// <summary>
+
     /// Cập nhật brand
-    /// </summary>
+
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateBrandCommand command)
     {
@@ -55,9 +55,9 @@ public class BrandsController : BaseApiController
         return Success(result, "Cập nhật thương hiệu thành công");
     }
 
-    /// <summary>
+
     /// Xóa brand
-    /// </summary>
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
