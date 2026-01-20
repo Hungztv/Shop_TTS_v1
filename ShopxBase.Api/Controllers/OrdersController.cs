@@ -1,93 +1,70 @@
+using Microsoft.AspNetCore.Mvc;
+using ShopxBase.Application.Features.Orders.Commands.CreateOrder;
+using ShopxBase.Application.Features.Orders.Commands.UpdateOrderStatus;
+using ShopxBase.Application.Features.Orders.Commands.CancelOrder;
+using ShopxBase.Application.Features.Orders.Queries.GetOrders;
+using ShopxBase.Application.Features.Orders.Queries.GetOrderById;
+
 namespace ShopxBase.Api.Controllers;
 
-using Microsoft.AspNetCore.Mvc;
-using ShopxBase.Application.DTOs;
-using ShopxBase.Application.Interfaces;
-
 /// <summary>
-/// Orders API Controller
+/// Orders API Controller - CQRS Pattern
 /// </summary>
-[ApiController]
-[Route("api/[controller]")]
-public class OrdersController : ControllerBase
+public class OrdersController : BaseApiController
 {
-    private readonly IOrderService _orderService;
-    private readonly ILogger<OrdersController> _logger;
-
-    public OrdersController(IOrderService orderService, ILogger<OrdersController> logger)
-    {
-        _orderService = orderService;
-        _logger = logger;
-    }
-
     /// <summary>
-    /// Get all orders
+    /// Lấy danh sách orders với pagination và filters
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetOrders([FromQuery] GetOrdersQuery query)
     {
-        var orders = await _orderService.GetAllOrdersAsync();
-        return Ok(orders);
+        var result = await Mediator.Send(query);
+        return Success(result);
     }
 
     /// <summary>
-    /// Get order by id
+    /// Lấy order theo ID
     /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var order = await _orderService.GetOrderByIdAsync(id);
-        return Ok(order);
+        var result = await Mediator.Send(new GetOrderByIdQuery(id));
+        return Success(result);
     }
 
     /// <summary>
-    /// Get orders by user id
-    /// </summary>
-    [HttpGet("user/{userId}")]
-    public async Task<IActionResult> GetByUserId(int userId)
-    {
-        var orders = await _orderService.GetOrdersByUserIdAsync(userId);
-        return Ok(orders);
-    }
-
-    /// <summary>
-    /// Create new order
+    /// Tạo order mới
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateOrderDto createOrderDto)
+    public async Task<IActionResult> Create([FromBody] CreateOrderCommand command)
     {
-        var order = await _orderService.CreateOrderAsync(createOrderDto);
-        return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+        var result = await Mediator.Send(command);
+        return Success(result, "Tạo đơn hàng thành công");
     }
 
     /// <summary>
-    /// Update order status
+    /// Cập nhật trạng thái order
     /// </summary>
     [HttpPut("{id}/status")]
-    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusDto updateOrderStatusDto)
+    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusCommand command)
     {
-        updateOrderStatusDto.OrderId = id;
-        var order = await _orderService.UpdateOrderStatusAsync(updateOrderStatusDto);
-        return Ok(order);
+        if (id != command.OrderId)
+            return BadRequest("ID không khớp");
+
+        var result = await Mediator.Send(command);
+        return Success(result, "Cập nhật trạng thái đơn hàng thành công");
     }
 
     /// <summary>
-    /// Cancel order
+    /// Hủy order
     /// </summary>
-    [HttpDelete("{id}/cancel")]
-    public async Task<IActionResult> Cancel(int id)
+    [HttpPost("{id}/cancel")]
+    public async Task<IActionResult> Cancel(int id, [FromBody] CancelOrderCommand command)
     {
-        var result = await _orderService.CancelOrderAsync(id);
-        return result ? Ok(new { message = "Order cancelled successfully" }) : NotFound();
-    }
+        if (id != command.OrderId)
+            return BadRequest("ID không khớp");
 
-    /// <summary>
-    /// Get order count by user
-    /// </summary>
-    [HttpGet("user/{userId}/count")]
-    public async Task<IActionResult> GetOrderCount(int userId)
-    {
-        var count = await _orderService.GetOrderCountByUserAsync(userId);
-        return Ok(new { userId, orderCount = count });
+        var result = await Mediator.Send(command);
+        return Success(result, "Hủy đơn hàng thành công");
     }
 }
