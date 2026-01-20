@@ -1,6 +1,8 @@
 using AutoMapper;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Application.DTOs.Coupon;
+using ShopxBase.Application.Features.Coupons.Commands.CreateCoupon;
+using ShopxBase.Application.Features.Coupons.Commands.UpdateCoupon;
 
 namespace ShopxBase.Application.Mappings;
 
@@ -28,6 +30,22 @@ public class CouponMappingProfile : Profile
 
         // UpdateCouponDto -> Coupon Entity (Update)
         CreateMap<UpdateCouponDto, Coupon>()
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.Orders, opt => opt.Ignore());
+
+        // Command Mappings (CQRS)
+        CreateMap<CreateCouponCommand, Coupon>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.UsedCount, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.Orders, opt => opt.Ignore());
+
+        CreateMap<UpdateCouponCommand, Coupon>()
+            .ForMember(dest => dest.UsedCount, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
