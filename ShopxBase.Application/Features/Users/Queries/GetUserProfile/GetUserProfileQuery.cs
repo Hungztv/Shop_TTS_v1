@@ -5,5 +5,5 @@ namespace ShopxBase.Application.Features.Users.Queries.GetUserProfile;
 
 public class GetUserProfileQuery : IRequest<AppUserDto>
 {
-    // TODO: Add properties
+    public string UserId { get; set; }
 }

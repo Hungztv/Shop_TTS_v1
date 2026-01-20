@@ -2,6 +2,7 @@ using MediatR;
 using AutoMapper;
 using ShopxBase.Domain.Interfaces;
 using ShopxBase.Application.DTOs.User;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Application.Features.Users.Queries.GetUserProfile;
 
@@ -18,7 +19,10 @@ public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, A
 
     public async Task<AppUserDto> Handle(GetUserProfileQuery request, CancellationToken cancellationToken)
     {
-        // TODO: Implement handler logic
-        throw new NotImplementedException();
+        var user = await _unitOfWork.Users.GetByIdAsync(request.UserId);
+        if (user == null || user.IsDeleted)
+            throw new UserNotFoundException($"Người dùng với Id '{request.UserId}' không tồn tại");
+
+        return _mapper.Map<AppUserDto>(user);
     }
 }
