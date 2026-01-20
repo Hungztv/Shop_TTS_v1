@@ -3,17 +3,26 @@ using ShopxBase.Infrastructure.Extensions;
 using ShopxBase.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using DotNetEnv;
+
+// Load environment variables from .env file
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Build connection string from environment variables
+var host = Environment.GetEnvironmentVariable("SUPABASE_HOST") ?? "localhost";
+var database = Environment.GetEnvironmentVariable("SUPABASE_DATABASE") ?? "postgres";
+var user = Environment.GetEnvironmentVariable("SUPABASE_USER") ?? "postgres";
+var password = Environment.GetEnvironmentVariable("SUPABASE_PASSWORD") ?? "postgres";
+var connectionString = $"Host={host};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
 
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=(localdb)\\mssqllocaldb;Database=ShoppingDB;Trusted_Connection=true;";
 
 builder.Services.AddDbContext<ShopxBaseDbContext>(options =>
-    options.UseSqlServer(connectionString)
+    options.UseNpgsql(connectionString)
 );
 
 // Add Application Layer (MediatR, AutoMapper, FluentValidation)

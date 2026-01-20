@@ -19,10 +19,10 @@ namespace ShopxBase.Infrastructure.Extensions
             if (string.IsNullOrEmpty(connectionString))
                 throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
-            // Register DbContext
+            // Register DbContext - PostgreSQL (Supabase)
             services.AddDbContext<ShopxBaseDbContext>(options =>
-                options.UseSqlServer(connectionString,
-                    sqlServerOptions => sqlServerOptions.CommandTimeout(30)));
+                options.UseNpgsql(connectionString,
+                    postgresOptions => postgresOptions.CommandTimeout(30)));
 
             // Also register DbContext as abstract type for UnitOfWork injection
             services.AddScoped<DbContext>(sp => sp.GetRequiredService<ShopxBaseDbContext>());
