@@ -2,6 +2,7 @@ using MediatR;
 using AutoMapper;
 using ShopxBase.Domain.Interfaces;
 using ShopxBase.Application.DTOs.Brand;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Application.Features.Brands.Commands.UpdateBrand;
 
@@ -18,7 +19,13 @@ public class UpdateBrandCommandHandler : IRequestHandler<UpdateBrandCommand, Bra
 
     public async Task<BrandDto> Handle(UpdateBrandCommand request, CancellationToken cancellationToken)
     {
-        // TODO: Implement handler logic
-        throw new NotImplementedException();
+        var brand = await _unitOfWork.Brands.GetByIdAsync(request.Id);
+        if (brand == null)
+            throw new BrandNotFoundException($"Thương hiệu với Id {request.Id} không tồn tại");
+
+        _mapper.Map(request, brand);
+
+        await _unitOfWork.Brands.UpdateAsync(brand);
+        return _mapper.Map<BrandDto>(brand);
     }
 }

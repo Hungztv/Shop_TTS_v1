@@ -2,6 +2,7 @@ using MediatR;
 using AutoMapper;
 using ShopxBase.Domain.Interfaces;
 using ShopxBase.Application.DTOs.Category;
+using ShopxBase.Domain.Exceptions;
 
 namespace ShopxBase.Application.Features.Categories.Commands.UpdateCategory;
 
@@ -18,7 +19,13 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
 
     public async Task<CategoryDto> Handle(UpdateCategoryCommand request, CancellationToken cancellationToken)
     {
-        // TODO: Implement handler logic
-        throw new NotImplementedException();
+        var category = await _unitOfWork.Categories.GetByIdAsync(request.Id);
+        if (category == null)
+            throw new CategoryNotFoundException($"Danh mục với Id {request.Id} không tồn tại");
+
+        _mapper.Map(request, category);
+
+        await _unitOfWork.Categories.UpdateAsync(category);
+        return _mapper.Map<CategoryDto>(category);
     }
 }

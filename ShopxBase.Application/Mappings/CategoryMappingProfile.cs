@@ -1,6 +1,8 @@
 using AutoMapper;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Application.DTOs.Category;
+using ShopxBase.Application.Features.Categories.Commands.CreateCategory;
+using ShopxBase.Application.Features.Categories.Commands.UpdateCategory;
 
 namespace ShopxBase.Application.Mappings;
 
@@ -25,6 +27,20 @@ public class CategoryMappingProfile : Profile
 
         // UpdateCategoryDto -> Category Entity (Update)
         CreateMap<UpdateCategoryDto, Category>()
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.Products, opt => opt.Ignore());
+
+        // Command Mappings (CQRS)
+        CreateMap<CreateCategoryCommand, Category>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.Products, opt => opt.Ignore());
+
+        CreateMap<UpdateCategoryCommand, Category>()
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())

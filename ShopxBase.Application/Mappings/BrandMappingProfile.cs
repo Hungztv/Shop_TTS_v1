@@ -1,6 +1,8 @@
 using AutoMapper;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Application.DTOs.Brand;
+using ShopxBase.Application.Features.Brands.Commands.CreateBrand;
+using ShopxBase.Application.Features.Brands.Commands.UpdateBrand;
 
 namespace ShopxBase.Application.Mappings;
 
@@ -25,6 +27,20 @@ public class BrandMappingProfile : Profile
 
         // UpdateBrandDto -> Brand Entity (Update)
         CreateMap<UpdateBrandDto, Brand>()
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.Products, opt => opt.Ignore());
+
+        // Command Mappings (CQRS)
+        CreateMap<CreateBrandCommand, Brand>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.Products, opt => opt.Ignore());
+
+        CreateMap<UpdateBrandCommand, Brand>()
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())

@@ -2,6 +2,7 @@ using MediatR;
 using AutoMapper;
 using ShopxBase.Domain.Interfaces;
 using ShopxBase.Application.DTOs.Brand;
+using ShopxBase.Domain.Entities;
 
 namespace ShopxBase.Application.Features.Brands.Commands.CreateBrand;
 
@@ -18,7 +19,11 @@ public class CreateBrandCommandHandler : IRequestHandler<CreateBrandCommand, Bra
 
     public async Task<BrandDto> Handle(CreateBrandCommand request, CancellationToken cancellationToken)
     {
-        // TODO: Implement handler logic
-        throw new NotImplementedException();
+        var brand = _mapper.Map<Brand>(request);
+
+        await _unitOfWork.Brands.AddAsync(brand);
+        await _unitOfWork.SaveChangesAsync();
+
+        return _mapper.Map<BrandDto>(brand);
     }
 }

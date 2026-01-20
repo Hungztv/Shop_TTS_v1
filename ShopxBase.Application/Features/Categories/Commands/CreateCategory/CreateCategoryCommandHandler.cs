@@ -2,6 +2,7 @@ using MediatR;
 using AutoMapper;
 using ShopxBase.Domain.Interfaces;
 using ShopxBase.Application.DTOs.Category;
+using ShopxBase.Domain.Entities;
 
 namespace ShopxBase.Application.Features.Categories.Commands.CreateCategory;
 
@@ -18,7 +19,11 @@ public class CreateCategoryCommandHandler : IRequestHandler<CreateCategoryComman
 
     public async Task<CategoryDto> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
     {
-        // TODO: Implement handler logic
-        throw new NotImplementedException();
+        var category = _mapper.Map<Category>(request);
+
+        await _unitOfWork.Categories.AddAsync(category);
+        await _unitOfWork.SaveChangesAsync();
+
+        return _mapper.Map<CategoryDto>(category);
     }
 }
