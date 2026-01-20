@@ -5,6 +5,7 @@ using ShopxBase.Application.DTOs.Brand;
 using ShopxBase.Application.DTOs.Common;
 using ShopxBase.Domain.Entities;
 using System.Linq.Expressions;
+using System.Linq;
 
 namespace ShopxBase.Application.Features.Brands.Queries.GetBrands;
 
@@ -21,23 +22,22 @@ public class GetBrandsQueryHandler : IRequestHandler<GetBrandsQuery, PaginatedRe
 
     public async Task<PaginatedResult<BrandDto>> Handle(GetBrandsQuery request, CancellationToken cancellationToken)
     {
-        // Build filter predicate
-        Expression<Func<Brand, bool>> predicate = b => true;
+        // EF Core không translate được Invoke/Compile; filter in-memory sau khi lấy danh sách
+        var allBrands = (await _unitOfWork.Brands.GetAllAsync()).AsEnumerable();
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             var searchLower = request.SearchTerm.ToLower();
-            predicate = b => b.Name.ToLower().Contains(searchLower) ||
-                           b.Description.ToLower().Contains(searchLower);
+            allBrands = allBrands.Where(b =>
+                (b.Name ?? string.Empty).ToLower().Contains(searchLower) ||
+                (b.Description ?? string.Empty).ToLower().Contains(searchLower));
         }
 
         if (!string.IsNullOrWhiteSpace(request.Status))
         {
-            var currentPredicate = predicate;
-            predicate = b => currentPredicate.Compile()(b) && b.Status == request.Status;
+            allBrands = allBrands.Where(b => b.Status == request.Status);
         }
 
-        var allBrands = await _unitOfWork.Brands.FindAsync(predicate);
         var totalCount = allBrands.Count();
 
         // Apply pagination
