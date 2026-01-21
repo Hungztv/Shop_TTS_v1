@@ -31,8 +31,8 @@ namespace ShopxBase.Infrastructure.Extensions
             // Also register DbContext as abstract type for UnitOfWork injection
             services.AddScoped<DbContext>(sp => sp.GetRequiredService<ShopxBaseDbContext>());
 
-            // Register Identity
-            services.AddIdentity<AppUser, IdentityRole>(options =>
+            // Register Identity Core (no UI, no auth middleware - using JWT Bearer only)
+            services.AddIdentityCore<AppUser>(options =>
             {
                 // Password settings
                 options.Password.RequireDigit = false;
@@ -44,8 +44,10 @@ namespace ShopxBase.Infrastructure.Extensions
                 // User settings
                 options.User.RequireUniqueEmail = true;
             })
+            .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<ShopxBaseDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddSignInManager(); // Add SignInManager for password verification only (no cookies)
 
             // Register Generic Repository<T> - for all basic CRUD operations
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

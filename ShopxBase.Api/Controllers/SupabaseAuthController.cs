@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShopxBase.Application.DTOs.Auth;
 using ShopxBase.Application.Interfaces;
+using ShopxBase.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 
 namespace ShopxBase.Api.Controllers;
 
@@ -15,13 +17,16 @@ public class SupabaseAuthController : ControllerBase
 {
     private readonly ISupabaseAuthService _authService;
     private readonly ILogger<SupabaseAuthController> _logger;
+    private readonly UserManager<AppUser> _userManager;
 
     public SupabaseAuthController(
         ISupabaseAuthService authService,
-        ILogger<SupabaseAuthController> logger)
+        ILogger<SupabaseAuthController> logger,
+        UserManager<AppUser> userManager)
     {
         _authService = authService;
         _logger = logger;
+        _userManager = userManager;
     }
 
     /// <summary>
@@ -34,6 +39,23 @@ public class SupabaseAuthController : ControllerBase
         if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
         {
             return BadRequest(new { success = false, message = "Email và mật khẩu là bắt buộc" });
+        }
+
+        // Chặn trùng email/username ở local trước khi gọi Supabase để tránh lỗi 23505 từ trigger
+        var existingByEmail = await _userManager.FindByEmailAsync(request.Email);
+        if (existingByEmail != null)
+        {
+            return Conflict(new { success = false, error = "email_exists", message = "Email đã được sử dụng" });
+        }
+
+        var userNameToCheck = string.IsNullOrWhiteSpace(request.FullName) ? request.Email : request.FullName;
+        if (!string.IsNullOrWhiteSpace(userNameToCheck))
+        {
+            var existingByUserName = await _userManager.FindByNameAsync(userNameToCheck);
+            if (existingByUserName != null)
+            {
+                return Conflict(new { success = false, error = "username_exists", message = "Tên người dùng đã tồn tại, vui lòng chọn tên khác" });
+            }
         }
 
         var metadata = new Dictionary<string, object>();
@@ -57,11 +79,25 @@ public class SupabaseAuthController : ControllerBase
             });
         }
 
+        // Xử lý lỗi domain email không được phép
+        var errorMsg = result.ErrorDescription ?? result.Error ?? "Đăng ký thất bại";
+        if (errorMsg.Contains("invalid", StringComparison.OrdinalIgnoreCase) &&
+            errorMsg.Contains("email", StringComparison.OrdinalIgnoreCase))
+        {
+            var domain = request.Email.Split('@').LastOrDefault();
+            return BadRequest(new
+            {
+                success = false,
+                error = "email_domain_not_allowed",
+                message = $"Email với domain '{domain}' chưa được hỗ trợ. Vui lòng sử dụng email từ các nhà cung cấp phổ biến (Gmail, Outlook, v.v.) hoặc liên hệ quản trị viên."
+            });
+        }
+
         return BadRequest(new
         {
             success = false,
             error = result.Error,
-            message = result.ErrorDescription
+            message = errorMsg
         });
     }
 

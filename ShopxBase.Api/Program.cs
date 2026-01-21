@@ -69,26 +69,6 @@ builder.Configuration["JwtSettings:ExpiryMinutes"] = jwtExpiryMinutes;
 // Add connection string to configuration for Infrastructure layer
 builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
 
-// 3. Configure Identity
-builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
-{
-    // Password settings
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 6;
-
-    // User settings
-    options.User.RequireUniqueEmail = true;
-
-    // Lockout settings (optional)
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-    options.Lockout.MaxFailedAccessAttempts = 5;
-})
-.AddEntityFrameworkStores<ShopxBaseDbContext>()
-.AddDefaultTokenProviders();
-
 // 4. Configure Supabase Settings
 var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL")
     ?? throw new InvalidOperationException("SUPABASE_URL is not set in .env file");
@@ -113,7 +93,7 @@ var secretKey = jwtSettings?.SecretKey
     ?? Environment.GetEnvironmentVariable("JWT_SECRET") // Fallback lấy từ ENV nếu config null
     ?? throw new InvalidOperationException("JWT SecretKey is not configured");
 
-// 6. Configure JWT Authentication with Supabase JWT support
+// 6. Configure JWT Authentication with Supabase JWT support (ES256 via JWKS)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -121,26 +101,20 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.Authority = $"{supabaseUrl}/auth/v1";
+    options.RequireHttpsMetadata = false; // Dev only - set true in production
+    options.SaveToken = true;
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        // Support both Supabase issuer and custom issuer
-        ValidIssuers = new[]
-        {
-            $"{supabaseUrl}/auth/v1",  // Supabase Auth issuer
-            jwtSettings?.Issuer ?? "ShopxBaseAPI"  // Custom issuer
-        },
-        ValidAudiences = new[]
-        {
-            "authenticated",  // Supabase audience
-            jwtSettings?.Audience ?? "ShopxBaseClient"  // Custom audience
-        },
-        // Use Supabase JWT secret for verification
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(supabaseJwtSecret)),
+        // Supabase issuer
+        ValidIssuer = $"{supabaseUrl}/auth/v1",
+        // Supabase audience
+        ValidAudience = "authenticated",
         ClockSkew = TimeSpan.Zero,
         // Map Supabase claims to standard claims
         RoleClaimType = "role",
@@ -151,7 +125,12 @@ builder.Services.AddAuthentication(options =>
     {
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"❌ Authentication failed: {context.Exception.Message}");
+            Console.WriteLine($"❌ JWT Authentication failed: {context.Exception.GetType().Name}");
+            Console.WriteLine($"   Message: {context.Exception.Message}");
+            if (context.Exception.InnerException != null)
+            {
+                Console.WriteLine($"   Inner: {context.Exception.InnerException.Message}");
+            }
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
@@ -159,7 +138,12 @@ builder.Services.AddAuthentication(options =>
             var userId = context.Principal?.FindFirst("sub")?.Value;
             var email = context.Principal?.FindFirst("email")?.Value;
             var role = context.Principal?.FindFirst("role")?.Value;
-            Console.WriteLine($"✅ Token validated - User: {userId}, Email: {email}, Role: {role}");
+            Console.WriteLine($"✅ JWT Token validated - User: {userId}, Email: {email}, Role: {role}");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            Console.WriteLine($"⚠️ JWT Challenge: {context.Error}, {context.ErrorDescription}");
             return Task.CompletedTask;
         }
     };
@@ -207,29 +191,6 @@ builder.Services.AddApplication();
 
 // Add Infrastructure Layer (DbContext, Repositories, Identity, JWT)
 builder.Services.AddInfrastructure(builder.Configuration);
-
-// Add JWT Authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
-        ValidAudience = builder.Configuration["JwtSettings:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!))
-    };
-});
-
-builder.Services.AddAuthorization();
 
 // Add Auth Services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();

@@ -10,98 +10,123 @@ namespace ShopxBase.Application.Features.Auth.Commands.Register;
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, LoginResponseDto>
 {
     private readonly UserManager<AppUser> _userManager;
-    private readonly IJwtTokenService _jwtTokenService;
+    private readonly ISupabaseAuthService _supabaseAuthService;
 
-    public RegisterCommandHandler(UserManager<AppUser> userManager, IJwtTokenService jwtTokenService)
+    public RegisterCommandHandler(
+        UserManager<AppUser> userManager,
+        ISupabaseAuthService supabaseAuthService)
     {
         _userManager = userManager;
-        _jwtTokenService = jwtTokenService;
+        _supabaseAuthService = supabaseAuthService;
     }
 
     public async Task<LoginResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        // Check if username exists
+        // 1) Chặn trùng username ở local (Supabase không quản lý username)
         var existingUserByUsername = await _userManager.FindByNameAsync(request.UserName);
         if (existingUserByUsername != null)
             throw new UserAlreadyExistsException($"Tên người dùng '{request.UserName}' đã tồn tại");
 
-        // Check if email exists
-        var existingUserByEmail = await _userManager.FindByEmailAsync(request.Email);
-        if (existingUserByEmail != null)
-            throw new UserAlreadyExistsException($"Email '{request.Email}' đã được đăng ký");
-
-        // Create new user with all required fields to avoid NOT NULL constraint violations
-        var user = new AppUser
+        // 2) Đăng ký trên Supabase (nguồn chính)
+        var metadata = new Dictionary<string, object>
         {
-            UserName = request.UserName,
-            Email = request.Email,
-            FullName = request.FullName ?? request.UserName,
-            PhoneNumber = request.PhoneNumber,
-            Occupation = "Customer",  // Required by database NOT NULL constraint
-            Address = "",              // Required by database NOT NULL constraint
-            Avatar = "",               // Required by database NOT NULL constraint
-            token = "",                // Required by database NOT NULL constraint
-            CreatedAt = DateTime.UtcNow,
-            EmailConfirmed = true
+            { "full_name", request.FullName ?? request.UserName },
+            { "phone", request.PhoneNumber ?? string.Empty }
         };
 
-        var result = await _userManager.CreateAsync(user, request.Password);
-
-        if (!result.Succeeded)
+        var supabaseResult = await _supabaseAuthService.SignUpAsync(request.Email, request.Password, metadata);
+        if (!supabaseResult.Success || supabaseResult.User == null)
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Đăng ký thất bại: {errors}");
-        }
+            var errorMsg = supabaseResult.ErrorDescription ?? supabaseResult.Error ?? "Đăng ký Supabase thất bại";
 
-        // Generate tokens
-        var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-        try
-        {
-            // Update user with refresh token and login timestamp BEFORE role assignment
-            // This avoids nested transaction issues with Supabase PgBouncer
-            user.token = refreshToken;
-            user.LastLoginAt = DateTime.UtcNow;
-            var updateResult = await _userManager.UpdateAsync(user);
-
-            if (!updateResult.Succeeded)
+            // Xử lý lỗi domain không được phép
+            if (errorMsg.Contains("invalid", StringComparison.OrdinalIgnoreCase) &&
+                errorMsg.Contains("email", StringComparison.OrdinalIgnoreCase))
             {
-                var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Cập nhật người dùng thất bại: {errors}");
+                var domain = request.Email.Split('@').LastOrDefault();
+                throw new InvalidOperationException(
+                    $"Email với domain '{domain}' chưa được hỗ trợ. Vui lòng sử dụng email từ các nhà cung cấp phổ biến (Gmail, Outlook, v.v.) hoặc liên hệ quản trị viên để thêm domain này vào danh sách cho phép."
+                );
             }
 
-            // Assign default role AFTER update
-            var roleResult = await _userManager.AddToRoleAsync(user, "Customer");
+            throw new InvalidOperationException(errorMsg);
+        }
+
+        var supabaseUserId = supabaseResult.User.Id;
+
+        // 3) Smart retry: đợi trigger sync vào AspNetUsers
+        AppUser? localUser = null;
+        for (var i = 0; i < 5; i++)
+        {
+            localUser = await _userManager.FindByIdAsync(supabaseUserId);
+            if (localUser != null) break;
+            await Task.Delay(500, cancellationToken);
+        }
+
+        // 4) Fail-safe: nếu trigger chưa tạo thì tự tạo user local (ID phải khớp Supabase)
+        if (localUser == null)
+        {
+            // Double-check sau khi chờ trigger: nếu vừa được tạo thì dùng luôn, tránh lỗi duplicate key
+            var recheckUser = await _userManager.FindByNameAsync(request.UserName);
+            if (recheckUser != null)
+            {
+                localUser = recheckUser;
+            }
+            else
+            {
+                localUser = new AppUser
+                {
+                    Id = supabaseUserId,
+                    UserName = request.UserName,
+                    Email = request.Email,
+                    FullName = request.FullName ?? request.UserName,
+                    PhoneNumber = request.PhoneNumber,
+                    Occupation = "Customer",
+                    Address = string.Empty,
+                    Avatar = string.Empty,
+                    token = string.Empty,
+                    CreatedAt = DateTime.UtcNow,
+                    EmailConfirmed = true
+                };
+
+                var createResult = await _userManager.CreateAsync(localUser);
+                if (!createResult.Succeeded)
+                {
+                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Tạo user local thất bại: {errors}");
+                }
+            }
+        }
+
+        // 5) Gán role Customer
+        if (!await _userManager.IsInRoleAsync(localUser, "Customer"))
+        {
+            var roleResult = await _userManager.AddToRoleAsync(localUser, "Customer");
             if (!roleResult.Succeeded)
             {
                 var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
                 throw new InvalidOperationException($"Thêm vai trò thất bại: {errors}");
             }
         }
-        catch (Exception ex)
-        {
-            // If any error occurs after user creation, delete the user to keep db clean
-            await _userManager.DeleteAsync(user);
-            throw new InvalidOperationException($"Lỗi trong quá trình đăng ký: {ex.Message}", ex);
-        }
 
-        // Generate access token with roles
-        var roles = await _userManager.GetRolesAsync(user);
-        var accessToken = await _jwtTokenService.GenerateAccessTokenAsync(user, roles);
+        // 6) Trả về token từ Supabase + thông tin user local
+        var roles = await _userManager.GetRolesAsync(localUser);
+        var expiresIn = supabaseResult.ExpiresIn ?? 3600;
 
         return new LoginResponseDto
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(60),
+            AccessToken = supabaseResult.AccessToken!,
+            RefreshToken = supabaseResult.RefreshToken!,
+            ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn),
+            TokenType = supabaseResult.TokenType ?? "Bearer",
             User = new UserInfoDto
             {
-                Id = user.Id,
-                UserName = user.UserName!,
-                Email = user.Email!,
-                FullName = user.FullName,
-                Avatar = user.Avatar,
-                PhoneNumber = user.PhoneNumber,
+                Id = localUser.Id,
+                UserName = localUser.UserName!,
+                Email = localUser.Email!,
+                FullName = localUser.FullName,
+                Avatar = localUser.Avatar,
+                PhoneNumber = localUser.PhoneNumber,
                 Roles = roles
             }
         };

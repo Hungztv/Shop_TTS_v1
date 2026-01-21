@@ -10,58 +10,102 @@ namespace ShopxBase.Application.Features.Auth.Commands.Login;
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponseDto>
 {
     private readonly UserManager<AppUser> _userManager;
-    private readonly IJwtTokenService _jwtTokenService;
+    private readonly ISupabaseAuthService _supabaseAuthService;
 
     public LoginCommandHandler(
         UserManager<AppUser> userManager,
-        IJwtTokenService jwtTokenService)
+        ISupabaseAuthService supabaseAuthService)
     {
         _userManager = userManager;
-        _jwtTokenService = jwtTokenService;
+        _supabaseAuthService = supabaseAuthService;
     }
 
     public async Task<LoginResponseDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        // Find user by email or username
-        var user = await _userManager.FindByEmailAsync(request.EmailOrUserName)
-                   ?? await _userManager.FindByNameAsync(request.EmailOrUserName);
+        // 1) Chuẩn hóa email để đăng nhập Supabase (Supabase yêu cầu email, không phải username)
+        string emailForSupabase = request.EmailOrUserName;
+        if (!request.EmailOrUserName.Contains('@'))
+        {
+            var userByName = await _userManager.FindByNameAsync(request.EmailOrUserName);
+            if (userByName == null)
+                throw new UserNotFoundException("Email/Tên người dùng hoặc mật khẩu không đúng");
+            emailForSupabase = userByName.Email!;
+        }
 
-        if (user == null)
-            throw new UserNotFoundException("Email/Tên người dùng hoặc mật khẩu không đúng");
+        // 2) Đăng nhập qua Supabase (nguồn chính)
+        var supabaseResult = await _supabaseAuthService.SignInWithPasswordAsync(emailForSupabase, request.Password);
+        if (!supabaseResult.Success || supabaseResult.User == null)
+        {
+            var message = supabaseResult.ErrorDescription ?? supabaseResult.Error ?? "Email/Tên người dùng hoặc mật khẩu không đúng";
+            throw new UnauthorizedAccessException(message);
+        }
 
-        // Check if account is deleted
-        if (user.IsDeleted)
+        var supabaseUser = supabaseResult.User;
+
+        // 3) Bảo đảm user tồn tại local (AspNetUsers)
+        var localUser = await _userManager.FindByIdAsync(supabaseUser.Id);
+        if (localUser == null)
+        {
+            // Fallback: tạo user local nếu thiếu (do trigger chậm hoặc user cũ)
+            localUser = new AppUser
+            {
+                Id = supabaseUser.Id,
+                UserName = supabaseUser.Email,
+                Email = supabaseUser.Email,
+                FullName = supabaseUser.UserMetadata != null && supabaseUser.UserMetadata.TryGetValue("full_name", out var fullNameObj)
+                    ? fullNameObj?.ToString()
+                    : supabaseUser.Email,
+                PhoneNumber = supabaseUser.Phone,
+                Occupation = "Customer",
+                Address = string.Empty,
+                Avatar = string.Empty,
+                token = string.Empty,
+                CreatedAt = supabaseUser.CreatedAt,
+                EmailConfirmed = supabaseUser.EmailConfirmedAt.HasValue
+            };
+
+            var createResult = await _userManager.CreateAsync(localUser);
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Tạo user local thất bại: {errors}");
+            }
+
+            // Đảm bảo role mặc định
+            await _userManager.AddToRoleAsync(localUser, "Customer");
+        }
+
+        if (localUser.IsDeleted)
             throw new UserNotFoundException("Tài khoản đã bị xóa");
 
-        // Check password using UserManager
-        var isValidPassword = await _userManager.CheckPasswordAsync(user, request.Password);
+        // 4) Lấy roles local để enrich response
+        var roles = await _userManager.GetRolesAsync(localUser);
+        if (!roles.Any())
+        {
+            if (!await _userManager.IsInRoleAsync(localUser, "Customer"))
+            {
+                await _userManager.AddToRoleAsync(localUser, "Customer");
+            }
+            roles = await _userManager.GetRolesAsync(localUser);
+        }
 
-        if (!isValidPassword)
-            throw new UnauthorizedAccessException("Email/Tên người dùng hoặc mật khẩu không đúng");
-
-        // Generate tokens
-        var roles = await _userManager.GetRolesAsync(user);
-        var accessToken = await _jwtTokenService.GenerateAccessTokenAsync(user, roles);
-        var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-        // Update user with refresh token and last login
-        user.token = refreshToken;
-        user.LastLoginAt = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
+        // 5) Trả về token Supabase + thông tin user local
+        var expiresIn = supabaseResult.ExpiresIn ?? 3600;
 
         return new LoginResponseDto
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(60),
+            AccessToken = supabaseResult.AccessToken!,
+            RefreshToken = supabaseResult.RefreshToken!,
+            ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn),
+            TokenType = supabaseResult.TokenType ?? "Bearer",
             User = new UserInfoDto
             {
-                Id = user.Id,
-                UserName = user.UserName!,
-                Email = user.Email!,
-                FullName = user.FullName,
-                Avatar = user.Avatar,
-                PhoneNumber = user.PhoneNumber,
+                Id = localUser.Id,
+                UserName = localUser.UserName!,
+                Email = localUser.Email!,
+                FullName = localUser.FullName,
+                Avatar = localUser.Avatar,
+                PhoneNumber = localUser.PhoneNumber,
                 Roles = roles
             }
         };
