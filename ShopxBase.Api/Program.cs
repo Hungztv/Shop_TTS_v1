@@ -39,11 +39,24 @@ var user = Environment.GetEnvironmentVariable("SUPABASE_USER")
 var password = Environment.GetEnvironmentVariable("SUPABASE_PASSWORD")
     ?? throw new InvalidOperationException("SUPABASE_PASSWORD is not set in .env file");
 
-Console.WriteLine($"📡 Connecting to: {host}:{port}/{database}");
+Console.WriteLine($" Connecting to: {host}:{port}/{database}");
 // Workaround for connection pool issues
 NpgsqlConnection.ClearAllPools();
 
 var connectionString = $"Host={host};Database={database};Username={user};Password={password};Port={port};SslMode=Require;No Reset On Close=true;";
+
+// Load JWT Settings from .env and add to Configuration
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? throw new InvalidOperationException("JWT_SECRET is not set in .env file");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "ShopxBaseAPI";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "ShopxBaseClient";
+var jwtExpiryMinutes = Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") ?? "60";
+
+// Add JWT settings to Configuration
+builder.Configuration["JwtSettings:Secret"] = jwtSecret;
+builder.Configuration["JwtSettings:Issuer"] = jwtIssuer;
+builder.Configuration["JwtSettings:Audience"] = jwtAudience;
+builder.Configuration["JwtSettings:ExpiryMinutes"] = jwtExpiryMinutes;
 
 builder.Services.AddDbContext<ShopxBaseDbContext>(options =>
     options.UseNpgsql(connectionString)
