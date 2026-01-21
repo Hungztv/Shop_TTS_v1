@@ -48,10 +48,12 @@ var password = Environment.GetEnvironmentVariable("SUPABASE_PASSWORD")
     ?? throw new InvalidOperationException("SUPABASE_PASSWORD is not set in .env file");
 
 Console.WriteLine($" Connecting to: {host}:{port}/{database}");
-// Workaround for connection pool issues with Supabase/PgBouncer
+// Clear pools before establishing new connections
 NpgsqlConnection.ClearAllPools();
 
-var connectionString = $"Host={host};Database={database};Username={user};Password={password};Port={port};SslMode=Require;No Reset On Close=true;Pooling=false;Multiplexing=false;";
+// Optimized connection string for Supabase with port 5432 (direct, not pooler)
+// Minimal pooling settings with connection reuse and extended timeout for complex queries
+var connectionString = $"Host={host};Database={database};Username={user};Password={password};Port={port};SslMode=Require;CommandTimeout=120;Pooling=true;MaxPoolSize=3;MinPoolSize=1;Connection Idle Lifetime=60;";
 
 // Load JWT Settings from .env and add to Configuration
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")

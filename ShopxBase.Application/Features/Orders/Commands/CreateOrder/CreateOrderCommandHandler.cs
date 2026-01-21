@@ -101,8 +101,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ord
         if (total < 0)
             throw OrderNotFoundException.WithMessage("Order total cannot be negative. Check discount amount.");
 
-        //6. CREATE ORDER WITH TRANSACTION
-        using (var transaction = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+        //6. CREATE ORDER (without explicit transaction - EF Core handles it)
         {
             try
             {
@@ -143,19 +142,18 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ord
                     order.OrderDetails.Add(orderDetail);
                 }
 
-                // Save Order
+                // Save Order - Use synchronous SaveChanges to avoid Npgsql 10.0.0 ManualResetEventSlim bug
                 await _unitOfWork.Orders.AddAsync(order);
-                await _unitOfWork.SaveChangesAsync();
 
-                //7. APPLY COUPON (increment usage)
+                //7. APPLY COUPON (increment usage) - do this before saving to include in same transaction
                 if (coupon != null)
                 {
                     coupon.Use();  // Increment UsedCount
                     await _unitOfWork.Coupons.UpdateAsync(coupon);
-                    await _unitOfWork.SaveChangesAsync();
                 }
 
-                transaction.Complete();
+                // WORKAROUND: Use synchronous SaveChanges in Task.Run to avoid async disposal bug in Npgsql 10.0.0
+                await Task.Run(() => _unitOfWork.SaveChanges());
 
                 //8. MAP TO DTO & RETURN
                 var orderDto = _mapper.Map<OrderDto>(order);
@@ -165,7 +163,6 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ord
             }
             catch (Exception ex)
             {
-                transaction.Dispose();
                 throw;
             }
         }
