@@ -1,9 +1,9 @@
 using ShopxBase.Application.Extensions;
 using ShopxBase.Infrastructure.Extensions;
 using ShopxBase.Infrastructure.Data;
-using ShopxBase.Infrastructure.Data.Repositories;
-using ShopxBase.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using DotNetEnv;
 using Npgsql;
 
@@ -40,10 +40,10 @@ var password = Environment.GetEnvironmentVariable("SUPABASE_PASSWORD")
     ?? throw new InvalidOperationException("SUPABASE_PASSWORD is not set in .env file");
 
 Console.WriteLine($" Connecting to: {host}:{port}/{database}");
-// Workaround for connection pool issues
+// Workaround for connection pool issues with Supabase/PgBouncer
 NpgsqlConnection.ClearAllPools();
 
-var connectionString = $"Host={host};Database={database};Username={user};Password={password};Port={port};SslMode=Require;No Reset On Close=true;";
+var connectionString = $"Host={host};Database={database};Username={user};Password={password};Port={port};SslMode=Require;No Reset On Close=true;Pooling=false;Multiplexing=false;";
 
 // Load JWT Settings from .env and add to Configuration
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
@@ -58,30 +58,72 @@ builder.Configuration["JwtSettings:Issuer"] = jwtIssuer;
 builder.Configuration["JwtSettings:Audience"] = jwtAudience;
 builder.Configuration["JwtSettings:ExpiryMinutes"] = jwtExpiryMinutes;
 
-builder.Services.AddDbContext<ShopxBaseDbContext>(options =>
-    options.UseNpgsql(connectionString)
-);
+// Add connection string to configuration for Infrastructure layer
+builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
 
 // Add Controllers
 builder.Services.AddControllers();
 
-// Add Swagger documentation
+// Add Swagger documentation with JWT support
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "ShopxBase API", Version = "v1", Description = "E-Commerce API with CQRS Pattern" });
+
+    // Add JWT Authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token."
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 // Add Application Layer (MediatR, AutoMapper, FluentValidation)
 builder.Services.AddApplication();
 
-// Add Infrastructure Layer - manually add repositories since DbContext is already configured
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<ICouponRepository, CouponRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<ShopxBaseDbContext>());
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+// Add Infrastructure Layer (DbContext, Repositories, Identity, JWT)
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!))
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Add CORS if needed
 builder.Services.AddCors(options =>
@@ -99,6 +141,12 @@ builder.Services.AddLogging();
 
 var app = builder.Build();
 
+// Seed roles
+using (var scope = app.Services.CreateScope())
+{
+    await SeedData.Initialize(scope.ServiceProvider);
+}
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -112,6 +160,10 @@ if (app.Environment.IsDevelopment())
 
 // app.UseHttpsRedirection(); // Disabled for development (HTTP only)
 app.UseCors("AllowAll");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

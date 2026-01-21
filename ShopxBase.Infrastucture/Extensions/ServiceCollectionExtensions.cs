@@ -1,9 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using ShopxBase.Infrastructure.Data;
 using ShopxBase.Infrastructure.Data.Repositories;
+using ShopxBase.Infrastructure.Services;
 using ShopxBase.Domain.Interfaces;
+using ShopxBase.Domain.Entities;
+using ShopxBase.Application.Interfaces;
 
 namespace ShopxBase.Infrastructure.Extensions
 {
@@ -27,6 +31,22 @@ namespace ShopxBase.Infrastructure.Extensions
             // Also register DbContext as abstract type for UnitOfWork injection
             services.AddScoped<DbContext>(sp => sp.GetRequiredService<ShopxBaseDbContext>());
 
+            // Register Identity
+            services.AddIdentity<AppUser, IdentityRole>(options =>
+            {
+                // Password settings
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequiredLength = 6;
+
+                // User settings
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddEntityFrameworkStores<ShopxBaseDbContext>()
+            .AddDefaultTokenProviders();
+
             // Register Generic Repository<T> - for all basic CRUD operations
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
@@ -38,6 +58,9 @@ namespace ShopxBase.Infrastructure.Extensions
 
             // Register Unit of Work - manages all repositories and transactions
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Register JWT Token Service
+            services.AddScoped<IJwtTokenService, JwtTokenService>();
 
             // Register External Services (TODO: implement these services)
             // services.AddScoped<IEmailService, EmailService>();
