@@ -112,3 +112,19 @@ public class BrandNotFoundException : DomainException
     {
     }
 }
+
+
+public class UserAlreadyExistsException : DomainException
+{
+    private const string ErrorCode = "USER_ALREADY_EXISTS";
+
+    public UserAlreadyExistsException(string message)
+        : base(message, ErrorCode)
+    {
+    }
+
+    public UserAlreadyExistsException(string message, Exception innerException)
+        : base(message, innerException, ErrorCode)
+    {
+    }
+}

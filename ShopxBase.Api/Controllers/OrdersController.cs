@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShopxBase.Application.Features.Orders.Commands.CreateOrder;
 using ShopxBase.Application.Features.Orders.Commands.UpdateOrderStatus;
@@ -10,6 +11,7 @@ namespace ShopxBase.Api.Controllers;
 /// <summary>
 /// Orders API Controller - CQRS Pattern
 /// </summary>
+[Authorize]
 public class OrdersController : BaseApiController
 {
     /// <summary>

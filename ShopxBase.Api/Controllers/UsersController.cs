@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShopxBase.Application.Features.Users.Commands.UpdateUserProfile;
 using ShopxBase.Application.Features.Users.Commands.DeleteUser;
@@ -9,6 +10,7 @@ namespace ShopxBase.Api.Controllers;
 /// <summary>
 /// Users API Controller - CQRS Pattern
 /// </summary>
+[Authorize]
 public class UsersController : BaseApiController
 {
     /// <summary>

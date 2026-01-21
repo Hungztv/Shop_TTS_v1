@@ -6,14 +6,14 @@ namespace ShopxBase.Domain.Entities
     public class AppUser : IdentityUser
     {
         //business properties
-        public string Occupation { get; set; }
+        public string? Occupation { get; set; }
         public string? RoleId { get; set; }
-        public string token { get; set; }
+        public string? token { get; set; }
         //profile properties
-        public string FullName { get; set; }
-        public string Address { get; set; }
+        public string? FullName { get; set; }
+        public string? Address { get; set; }
         public DateTime? DateOfBirth { get; set; }
-        public string Avatar { get; set; }
+        public string? Avatar { get; set; }
         //Audit properties
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastLoginAt { get; set; }
