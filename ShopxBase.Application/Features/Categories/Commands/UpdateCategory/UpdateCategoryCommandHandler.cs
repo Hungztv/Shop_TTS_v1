@@ -26,6 +26,8 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
         _mapper.Map(request, category);
 
         await _unitOfWork.Categories.UpdateAsync(category);
+        await _unitOfWork.SaveChangesAsync();
+
         return _mapper.Map<CategoryDto>(category);
     }
 }

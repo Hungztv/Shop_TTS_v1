@@ -13,7 +13,8 @@ public interface IRepository<T> where T : BaseEntity
     Task<T> AddAsync(T entity);
     Task<T> AddRangeAsync(IEnumerable<T> entities);
     Task<T> UpdateAsync(T entity);
-    Task<bool> DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id); // Soft delete
+    Task<bool> DeletePermanentlyAsync(int id); // Hard delete
     Task<bool> ExistsAsync(int id);
     Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null);
     Task<bool> AnyAsync(Expression<Func<T, bool>>? predicate = null);

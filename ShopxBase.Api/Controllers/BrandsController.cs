@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ShopxBase.Application.Features.Brands.Commands.CreateBrand;
 using ShopxBase.Application.Features.Brands.Commands.UpdateBrand;
 using ShopxBase.Application.Features.Brands.Commands.DeleteBrand;
+using ShopxBase.Application.Features.Brands.Commands.DeleteBrandPermanently;
 using ShopxBase.Application.Features.Brands.Queries.GetBrands;
 using ShopxBase.Application.Features.Brands.Queries.GetBrandById;
 
@@ -62,6 +63,14 @@ public class BrandsController : BaseApiController
     public async Task<IActionResult> Delete(int id)
     {
         await Mediator.Send(new DeleteBrandCommand { Id = id });
-        return Success(true, "Xóa thương hiệu thành công");
+        return Success(true, "Xóa thương hiệu thành công (soft delete)");
+    }
+
+    /// Xóa vĩnh viễn brand khỏi database
+    [HttpDelete("{id}/permanent")]
+    public async Task<IActionResult> DeletePermanently(int id)
+    {
+        await Mediator.Send(new DeleteBrandPermanentlyCommand { Id = id });
+        return Success(true, "Đã xóa vĩnh viễn thương hiệu khỏi database");
     }
 }

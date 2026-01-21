@@ -56,7 +56,7 @@ namespace ShopxBase.Infrastructure.Data.Repositories
         public virtual async Task<T> AddAsync(T entity)
         {
             await _dbSet.AddAsync(entity);
-            return entity; 
+            return entity;
         }
 
 
@@ -90,6 +90,16 @@ namespace ShopxBase.Infrastructure.Data.Repositories
             entity.IsDeleted = true;
             entity.UpdatedAt = DateTime.UtcNow;
             _dbSet.Update(entity);
+            return true;
+        }
+
+        public virtual async Task<bool> DeletePermanentlyAsync(int id)
+        {
+            var entity = await _dbSet.FirstOrDefaultAsync(e => e.Id == id);
+            if (entity == null)
+                return false;
+
+            _dbSet.Remove(entity); // Hard delete - xóa vĩnh viễn
             return true;
         }
 

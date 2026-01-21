@@ -26,6 +26,8 @@ public class UpdateBrandCommandHandler : IRequestHandler<UpdateBrandCommand, Bra
         _mapper.Map(request, brand);
 
         await _unitOfWork.Brands.UpdateAsync(brand);
+        await _unitOfWork.SaveChangesAsync();
+
         return _mapper.Map<BrandDto>(brand);
     }
 }
