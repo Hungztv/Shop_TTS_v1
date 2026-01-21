@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ShopxBase.Infrastucture/ShopxBase.Infrastructure.csproj" />
+  <Project Path="ShopxBase.Api/ShopxBase.Api.csproj" />
+  <Project Path="ShopxBase.Application/ShopxBase.Application.csproj" />
+  <Project Path="ShopxBase.Domain/ShopxBase.Domain.csproj" />
+</Solution>

@@ -1,9 +1,9 @@
 using ShopxBase.Application.Extensions;
 using ShopxBase.Infrastructure.Extensions;
 using ShopxBase.Infrastructure.Data;
-using ShopxBase.Infrastructure.Data.Repositories;
-using ShopxBase.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using DotNetEnv;
 using Npgsql;
 using ShopxBase.Domain.Entities;
@@ -47,16 +47,27 @@ var user = Environment.GetEnvironmentVariable("SUPABASE_USER")
 var password = Environment.GetEnvironmentVariable("SUPABASE_PASSWORD")
     ?? throw new InvalidOperationException("SUPABASE_PASSWORD is not set in .env file");
 
-Console.WriteLine($"📡 Connecting to: {host}:{port}/{database}");
-
-// Configure connection pooling
+Console.WriteLine($" Connecting to: {host}:{port}/{database}");
+// Workaround for connection pool issues with Supabase/PgBouncer
 NpgsqlConnection.ClearAllPools();
 
-var connectionString = $"Host={host};Database={database};Username={user};Password={password};Port={port};SslMode=Require;Connection Idle Lifetime=300;Pooling=true;Maximum Pool Size=20;Minimum Pool Size=5;";
+var connectionString = $"Host={host};Database={database};Username={user};Password={password};Port={port};SslMode=Require;No Reset On Close=true;Pooling=false;Multiplexing=false;";
 
-builder.Services.AddDbContext<ShopxBaseDbContext>(options =>
-    options.UseNpgsql(connectionString)
-);
+// Load JWT Settings from .env and add to Configuration
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? throw new InvalidOperationException("JWT_SECRET is not set in .env file");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "ShopxBaseAPI";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "ShopxBaseClient";
+var jwtExpiryMinutes = Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") ?? "60";
+
+// Add JWT settings to Configuration
+builder.Configuration["JwtSettings:Secret"] = jwtSecret;
+builder.Configuration["JwtSettings:Issuer"] = jwtIssuer;
+builder.Configuration["JwtSettings:Audience"] = jwtAudience;
+builder.Configuration["JwtSettings:ExpiryMinutes"] = jwtExpiryMinutes;
+
+// Add connection string to configuration for Infrastructure layer
+builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
 
 // 3. Configure Identity
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
@@ -159,48 +170,66 @@ builder.Services.AddAuthorization();
 // 7. Add Controllers
 builder.Services.AddControllers();
 
-// 6. Add Swagger documentation (ĐÃ SỬA LỖI Ở ĐÂY)
+// Add Swagger documentation with JWT support
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ShopxBase API", Version = "v1", Description = "E-Commerce API with CQRS Pattern" });
+    c.SwaggerDoc("v1", new() { Title = "ShopxBase API", Version = "v1", Description = "E-Commerce API with CQRS Pattern" });
 
     // Add JWT Authentication to Swagger
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
         Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token."
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer" // <-- Đã thêm dòng này (Quan trọng)
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
                 }
             },
-            Array.Empty<string>() // <-- Đã thêm mảng rỗng (Quan trọng)
+            Array.Empty<string>()
         }
     });
 });
 
-// 9. Add Application Layer (MediatR, AutoMapper, FluentValidation)
+// Add Application Layer (MediatR, AutoMapper, FluentValidation)
 builder.Services.AddApplication();
 
-// 10. Add Infrastructure Layer
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<ICouponRepository, CouponRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<ShopxBaseDbContext>());
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+// Add Infrastructure Layer (DbContext, Repositories, Identity, JWT)
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!))
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Add Auth Services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -224,7 +253,13 @@ builder.Services.AddLogging();
 
 var app = builder.Build();
 
-// 10. Configure the HTTP request pipeline
+// Seed roles
+using (var scope = app.Services.CreateScope())
+{
+    await SeedData.Initialize(scope.ServiceProvider);
+}
+
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
