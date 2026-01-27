@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShopxBase.Application.Features.Products.Commands.CreateProduct;
 using ShopxBase.Application.Features.Products.Commands.UpdateProduct;
@@ -10,6 +11,7 @@ namespace ShopxBase.Api.Controllers;
 
 /// <summary>
 /// Products API Controller - CQRS Pattern
+/// Public GET endpoints, Admin/Seller required for mutations
 /// </summary>
 public class ProductsController : BaseApiController
 {
@@ -18,6 +20,7 @@ public class ProductsController : BaseApiController
     /// </summary>
     /// <param name="query">Query parameters</param>
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetProducts([FromQuery] GetProductsQuery query)
     {
         var result = await Mediator.Send(query);
@@ -28,6 +31,7 @@ public class ProductsController : BaseApiController
     /// Lấy product theo ID
     /// </summary>
     [HttpGet("{id}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetById(int id)
     {
         var result = await Mediator.Send(new GetProductByIdQuery { Id = id });
@@ -38,6 +42,7 @@ public class ProductsController : BaseApiController
     /// Lấy product theo slug
     /// </summary>
     [HttpGet("slug/{slug}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetBySlug(string slug)
     {
         var result = await Mediator.Send(new GetProductBySlugQuery { Slug = slug });
@@ -45,9 +50,10 @@ public class ProductsController : BaseApiController
     }
 
     /// <summary>
-    /// Tạo product mới
+    /// Tạo product mới (Admin/Seller only)
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> Create([FromBody] CreateProductCommand command)
     {
         var result = await Mediator.Send(command);
@@ -55,9 +61,10 @@ public class ProductsController : BaseApiController
     }
 
     /// <summary>
-    /// Cập nhật product
+    /// Cập nhật product (Admin/Seller only)
     /// </summary>
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateProductCommand command)
     {
         if (id != command.Id)
@@ -68,9 +75,10 @@ public class ProductsController : BaseApiController
     }
 
     /// <summary>
-    /// Xóa product
+    /// Xóa product (Admin/Seller only)
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> Delete(int id)
     {
         await Mediator.Send(new DeleteProductCommand { Id = id });
