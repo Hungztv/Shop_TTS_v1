@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using ShopxBase.Infrastructure.Data;
 using ShopxBase.Infrastructure.Data.Repositories;
 using ShopxBase.Infrastructure.Services;
@@ -22,6 +23,9 @@ namespace ShopxBase.Infrastructure.Extensions
 
             if (string.IsNullOrEmpty(connectionString))
                 throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+
+            // Register HttpContextAccessor for ICurrentUserService
+            services.AddHttpContextAccessor();
 
             // Register DbContext - PostgreSQL (Supabase)
             services.AddDbContext<ShopxBaseDbContext>(options =>
@@ -63,6 +67,9 @@ namespace ShopxBase.Infrastructure.Extensions
 
             // Register JWT Token Service
             services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+            // Register Current User Service - provides access to authenticated user info in handlers
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             // Register External Services (TODO: implement these services)
             // services.AddScoped<IEmailService, EmailService>();
