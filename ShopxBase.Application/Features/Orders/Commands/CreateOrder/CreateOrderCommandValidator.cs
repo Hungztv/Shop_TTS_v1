@@ -72,7 +72,7 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
         RuleFor(x => x.CouponCode)
             .MustAsync(CouponExists)
             .WithMessage("Coupon code does not exist")
-            .When(x => !string.IsNullOrEmpty(x.CouponCode));
+            .When(x => !string.IsNullOrEmpty(x.CouponCode?.Trim()));
     }
 
 
@@ -102,10 +102,10 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 
     private async Task<bool> CouponExists(string couponCode, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(couponCode))
-            return true;  // Optional field
+        if (string.IsNullOrWhiteSpace(couponCode))
+            return true;  // Optional field - coupon is not required
 
-        var coupon = await _unitOfWork.CouponRepository.GetByCodeAsync(couponCode);
+        var coupon = await _unitOfWork.CouponRepository.GetByCodeAsync(couponCode.Trim());
         return coupon != null && !coupon.IsDeleted;
     }
 }
