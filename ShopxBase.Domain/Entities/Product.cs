@@ -32,6 +32,7 @@ public class Product : BaseEntity
     public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
     public virtual ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
     public virtual ICollection<CompareProduct> CompareProducts { get; set; } = new List<CompareProduct>();
+    public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
     //Business Methods
     public decimal GetaverageRating()
     {

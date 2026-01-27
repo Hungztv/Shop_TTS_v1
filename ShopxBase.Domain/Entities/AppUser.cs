@@ -24,6 +24,7 @@ namespace ShopxBase.Domain.Entities
         public virtual ICollection<CompareProduct> CompareProducts { get; set; } = new List<CompareProduct>();
         public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
         public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+        public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
 
         // Business Methods
         public void ValidateUser()
