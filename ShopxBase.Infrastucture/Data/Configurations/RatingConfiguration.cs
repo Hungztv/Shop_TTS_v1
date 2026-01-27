@@ -12,8 +12,10 @@ namespace ShopxBase.Infrastructure.Data.Configurations
             builder.HasKey(e => e.Id);
 
             builder.Property(e => e.Star).IsRequired();
+            builder.Property(e => e.Comment).HasMaxLength(1000);
+            builder.Property(e => e.Name).HasMaxLength(100);
+            builder.Property(e => e.Email).HasMaxLength(100);
 
-            
             builder.HasOne(e => e.Product)
                 .WithMany(p => p.Ratings)
                 .HasForeignKey(e => e.ProductId)
@@ -23,6 +25,9 @@ namespace ShopxBase.Infrastructure.Data.Configurations
                 .WithMany(u => u.Ratings)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Unique index: One rating per user per product
+            builder.HasIndex(e => new { e.UserId, e.ProductId }).IsUnique();
         }
     }
 }

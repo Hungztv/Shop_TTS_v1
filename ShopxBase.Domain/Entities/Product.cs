@@ -21,6 +21,12 @@ public class Product : BaseEntity
     public int SoldOut { get; set; }
     // Media
     public string Image { get; set; }
+
+    // Rating Statistics (denormalized for performance)
+    [Column(TypeName = "decimal(3,2)")]
+    public decimal AverageScore { get; set; } = 0;
+    public int RatingCount { get; set; } = 0;
+
     // Foreign Keys
     public int BrandId { get; set; }
     public int CategoryId { get; set; }

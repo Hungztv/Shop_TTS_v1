@@ -11,7 +11,11 @@ public class RatingMappingProfile : Profile
         // Rating Entity -> RatingDto (Read)
         CreateMap<Rating, RatingDto>()
             .ForMember(dest => dest.ProductName,
-                       opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null));
+                       opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null))
+            .ForMember(dest => dest.StarDisplay,
+                       opt => opt.MapFrom(src => src.GetStarDisplay()))
+            .ForMember(dest => dest.UserName,
+                       opt => opt.MapFrom(src => src.User != null ? src.User.FullName : src.Name));
 
         // CreateRatingDto -> Rating Entity (Create)
         CreateMap<CreateRatingDto, Rating>()
@@ -19,6 +23,9 @@ public class RatingMappingProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-            .ForMember(dest => dest.Product, opt => opt.Ignore());
+            .ForMember(dest => dest.IsVerifiedPurchase, opt => opt.Ignore())
+            .ForMember(dest => dest.IsApproved, opt => opt.Ignore())
+            .ForMember(dest => dest.Product, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore());
     }
 }
