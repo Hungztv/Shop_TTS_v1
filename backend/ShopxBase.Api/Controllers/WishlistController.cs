@@ -9,9 +9,6 @@ using ShopxBase.Application.Features.Wishlist.Queries.GetUserWishlist;
 
 namespace ShopxBase.Api.Controllers;
 
-/// <summary>
-/// Controller for managing user wishlists
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -24,9 +21,7 @@ public class WishlistController : ControllerBase
         _mediator = mediator;
     }
 
-    /// <summary>
-    /// Get current user's wishlist
-    /// </summary>
+
     [HttpGet]
     [ProducesResponseType(typeof(WishlistSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -37,9 +32,7 @@ public class WishlistController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>
-    /// Add a product to wishlist
-    /// </summary>
+
     [HttpPost]
     [ProducesResponseType(typeof(WishlistDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -56,9 +49,7 @@ public class WishlistController : ControllerBase
         return CreatedAtAction(nameof(GetWishlist), result);
     }
 
-    /// <summary>
-    /// Remove an item from wishlist by wishlist ID
-    /// </summary>
+
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -75,9 +66,7 @@ public class WishlistController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Clear all items from wishlist
-    /// </summary>
+
     [HttpDelete]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -1,68 +1,51 @@
-# Shopping System - Clean Architecture .NET Project
+# Shop TTS E-Commerce Platform
 
-Một dự án .NET hoàn chỉnh theo mô hình **Clean Architecture** với 4 tầng chính.
+Monorepo structure for a full-stack e-commerce application built with **Clean Architecture**, **CQRS**, and **MediatR**.
 
-## 📁 Cấu Trúc Dự Án
+## 📁 Project Structure
 
 ```
 Shop_TTS_V1/
-├── ShopxBase.Domain/                  # Tầng Domain (Business Logic)
-│   ├── Entities/                      # Các entity chính
-│   │   ├── BaseEntity.cs              # Base class cho tất cả entities
-│   │   ├── User.cs                    # User entity
-│   │   ├── Product.cs                 # Product entity
-│   │   └── Order.cs                   # Order & OrderItem entities
-│   ├── Enums/                         # Các enum
-│   │   ├── OrderStatus.cs             # Trạng thái đơn hàng
-│   │   └── PaymentStatus.cs           # Trạng thái thanh toán
-│   ├── Exceptions/                    # Custom exceptions
-│   │   └── DomainException.cs         # Domain-specific exceptions
-│   └── Interfaces/                    # Interfaces
-│       ├── IRepository.cs             # Generic repository interface
-│       └── IUnitOfWork.cs             # Unit of Work pattern
+├── backend/                           # ASP.NET Core 10 API (Clean Architecture)
+│   ├── ShopxBase.Domain/              # Domain Layer (Business Logic)
+│   ├── ShopxBase.Application/         # Application Layer (Use Cases, CQRS)
+│   ├── ShopxBase.Api/                 # API Layer (Controllers, Endpoints)
+│   ├── ShopxBase.Infrastucture/       # Infrastructure Layer (Data Access, EF)
+│   ├── Database/                      # Database scripts
+│   ├── ShopxBase.slnx                 # Solution file
+│   └── global.json
 │
-├── ShopxBase.Application/             # Tầng Application (Use Cases)
-│   ├── DTOs/                          # Data Transfer Objects
-│   │   ├── ProductDto.cs              # Product DTOs
-│   │   └── OrderDto.cs                # Order DTOs
-│   ├── Interfaces/                    # Service interfaces
-│   │   ├── IProductService.cs         # Product service interface
-│   │   └── IOrderService.cs           # Order service interface
-│   ├── Services/                      # Service implementations
-│   │   ├── ProductService.cs          # Product service
-│   │   └── OrderService.cs            # Order service
-│   └── MediatR/                       # MediatR pattern (tùy chọn)
-│       ├── Commands/                  # Commands
-│       ├── Queries/                   # Queries
-│       └── Handlers/                  # Handlers
+├── frontend/                          # Next.js Frontend (Placeholder)
 │
-├── ShopxBase.Infrastructure/          # Tầng Infrastructure (Data Access)
-│   ├── Data/
-│   │   ├── DbContext/                 # Entity Framework DbContext
-│   │   │   └── ShoppingDbContext.cs   # Shopping DB context
-│   │   ├── Repositories/              # Repository implementations
-│   │   │   ├── Repository.cs          # Generic repository
-│   │   │   └── ProductRepository.cs   # Product repository
-│   │   └── UnitOfWork.cs              # Unit of Work implementation
-│   ├── Services/                      # External services
-│   │   ├── EmailService.cs            # Email service
-│   │   └── PaymentService.cs          # Payment service
-│   └── Persistence/                   # Migration & seed data
-│
-├── ShopxBase.Api/                     # Tầng Presentation (API)
-│   ├── Controllers/                   # API Controllers
-│   │   ├── ProductsController.cs      # Products API endpoints
-│   │   └── OrdersController.cs        # Orders API endpoints
-│   ├── Models/                        # Request/Response models
-│   │   └── ApiModels.cs               # API response wrappers
-│   ├── Program.cs                     # Application startup & DI configuration
-│   ├── appsettings.json               # Configuration
-│   └── appsettings.Development.json   # Development configuration
-│
-├── Shopping.slnx                      # Solution file
-├── global.json                        # SDK configuration
 └── README.md                          # This file
 ```
+
+## 📋 Backend Project Structure
+
+For detailed backend architecture and features, see `backend/` directory.
+
+**Layers:**
+
+- **Domain** - Entities, Enums, Exceptions, Interfaces
+- **Application** - DTOs, CQRS Commands/Queries, Handlers, Validators, Mappings
+- **Infrastructure** - Data Access, EF Core DbContext, Repositories, Migrations
+- **API** - Controllers, Middleware, Dependency Injection
+  │
+  ├── ShopxBase.Api/ # Tầng Presentation (API)
+  │ ├── Controllers/ # API Controllers
+  │ │ ├── ProductsController.cs # Products API endpoints
+  │ │ └── OrdersController.cs # Orders API endpoints
+  │ ├── Models/ # Request/Response models
+  │ │ └── ApiModels.cs # API response wrappers
+  │ ├── Program.cs # Application startup & DI configuration
+  │ ├── appsettings.json # Configuration
+  │ └── appsettings.Development.json # Development configuration
+  │
+  ├── Shopping.slnx # Solution file
+  ├── global.json # SDK configuration
+  └── README.md # This file
+
+````
 
 ## 🏗️ Kiến Trúc Clean Architecture
 
@@ -104,7 +87,7 @@ Shop_TTS_V1/
 ```bash
 cd d:\Shop_TTS_V1
 dotnet restore
-```
+````
 
 2. **Build solution**:
 
