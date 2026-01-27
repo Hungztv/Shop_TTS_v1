@@ -18,6 +18,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<CompareProduct> CompareProducts { get; }
     IRepository<Slider> Sliders { get; }
     IRepository<Contact> Contacts { get; }
+    IRepository<Cart> Carts { get; }
 
     IProductRepository ProductRepository { get; }
     IOrderRepository OrderRepository { get; }
