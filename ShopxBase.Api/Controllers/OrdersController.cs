@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShopxBase.Application.Features.Orders.Commands.CreateOrder;
@@ -8,25 +9,39 @@ using ShopxBase.Application.Features.Orders.Queries.GetOrderById;
 
 namespace ShopxBase.Api.Controllers;
 
-/// <summary>
-/// Orders API Controller - CQRS Pattern
-/// </summary>
+
 [Authorize]
 public class OrdersController : BaseApiController
 {
-    /// <summary>
-    /// Lấy danh sách orders với pagination và filters
-    /// </summary>
+
+    private string GetUserId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? throw new UnauthorizedAccessException("Không thể xác định người dùng");
+    }
+
+
+    private bool IsAdminOrSeller()
+    {
+        return User.IsInRole("Admin") || User.IsInRole("Seller");
+    }
+
+
     [HttpGet]
     public async Task<IActionResult> GetOrders([FromQuery] GetOrdersQuery query)
     {
+        // For customers, force filter by their own UserId
+        if (!IsAdminOrSeller())
+        {
+            query.UserId = GetUserId();
+        }
+
         var result = await Mediator.Send(query);
         return Success(result);
     }
 
-    /// <summary>
-    /// Lấy order theo ID
-    /// </summary>
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -34,20 +49,20 @@ public class OrdersController : BaseApiController
         return Success(result);
     }
 
-    /// <summary>
-    /// Tạo order mới
-    /// </summary>
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateOrderCommand command)
     {
+        // CRITICAL: Override UserId from token for security
+        command.UserId = GetUserId();
+
         var result = await Mediator.Send(command);
         return Success(result, "Tạo đơn hàng thành công");
     }
 
-    /// <summary>
-    /// Cập nhật trạng thái order
-    /// </summary>
+
     [HttpPut("{id}/status")]
+    [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusCommand command)
     {
         if (id != command.OrderId)
@@ -57,8 +72,7 @@ public class OrdersController : BaseApiController
         return Success(result, "Cập nhật trạng thái đơn hàng thành công");
     }
 
-    /// <summary>
-    /// Hủy order
+
     /// </summary>
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(int id, [FromBody] CancelOrderCommand command)
