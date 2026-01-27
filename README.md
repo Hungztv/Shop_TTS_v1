@@ -13,7 +13,8 @@ Shop_TTS_V1/
 │   ├── ShopxBase.Infrastucture/       # Infrastructure Layer (Data Access, EF)
 │   ├── Database/                      # Database scripts
 │   ├── ShopxBase.slnx                 # Solution file
-│   └── global.json
+│   ├── global.json
+│   └── .env                           # Environment variables (secrets, DB config)
 │
 ├── frontend/                          # Next.js Frontend (Placeholder)
 │
