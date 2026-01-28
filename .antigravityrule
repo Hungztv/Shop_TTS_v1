@@ -1,0 +1,507 @@
+# ============================================================================
+
+# ANTIGRAVITY RULES - ShopxBase Vibe Coding Project
+
+# Tech Stack: .NET 8 (Clean Architecture) + Supabase + Next.js 16
+
+# ============================================================================
+
+# Đây là file quy tắc cho AI/Copilot khi làm việc với dự án
+
+# Đảm bảo tính bền vững (Sustainability), bảo trì (Maintainability), mở rộng (Scalability)
+
+# ============================================================================
+
+## 🎯 PROJECT OVERVIEW
+
+project_name: ShopxBase
+description: E-commerce platform với Clean Architecture
+tech_stack:
+backend: .NET 8, Entity Framework Core, MediatR (CQRS), FluentValidation
+database: Supabase (PostgreSQL)
+frontend: Next.js 16, React 19, TypeScript, Tailwind CSS 4
+auth: Supabase Auth + JWT
+
+## 📁 ARCHITECTURE RULES
+
+### Backend - Clean Architecture Layers
+
+```
+backend/
+├── ShopxBase.Api/           # Presentation Layer - Controllers, Middlewares
+├── ShopxBase.Application/   # Application Layer - CQRS, DTOs, Interfaces
+├── ShopxBase.Domain/        # Domain Layer - Entities, Enums, Exceptions
+└── ShopxBase.Infrastructure/# Infrastructure Layer - EF Core, External Services
+```
+
+rules:
+
+- Domain layer KHÔNG được phụ thuộc vào bất kỳ layer nào khác
+- Application layer chỉ phụ thuộc Domain layer
+- Infrastructure layer phụ thuộc Application và Domain
+- API layer phụ thuộc Application (và Infrastructure qua DI)
+
+### Frontend - Feature-Based Structure
+
+```
+frontend/
+├── app/                     # Next.js App Router
+├── components/
+│   ├── ui/                  # Reusable UI components (shadcn/ui style)
+│   └── layout/              # Layout components (Header, Footer, Sidebar)
+├── features/                # Feature-specific components & hooks
+├── lib/                     # Utilities, API client, helpers
+├── hooks/                   # Global custom hooks
+├── stores/                  # State management (Zustand recommended)
+└── types/                   # TypeScript type definitions
+```
+
+## 🔧 CODING CONVENTIONS
+
+### C# / .NET Backend
+
+naming:
+classes: PascalCase (ProductService, OrderController)
+interfaces: I prefix + PascalCase (IProductRepository)
+methods: PascalCase (GetProductById, CreateOrder)
+private_fields: \_camelCase (\_productRepository)
+constants: UPPER_SNAKE_CASE hoặc PascalCase
+async_methods: Suffix với Async (GetProductByIdAsync)
+
+file_organization:
+
+- Mỗi class/interface trong 1 file riêng
+- File name = Class name (ProductService.cs)
+- CQRS: Commands và Queries trong folders riêng biệt
+
+patterns:
+
+- Sử dụng CQRS với MediatR cho tất cả business logic
+- Repository Pattern cho data access
+- Unit of Work pattern cho transactions
+- Dependency Injection cho tất cả dependencies
+
+### TypeScript / Next.js Frontend
+
+naming:
+components: PascalCase (ProductCard.tsx, Header.tsx)
+hooks: camelCase với prefix use (useProducts, useAuth)
+utilities: camelCase (formatPrice, validateEmail)
+types: PascalCase (ProductDto, ApiResponse)
+constants: UPPER_SNAKE_CASE (API_BASE_URL)
+
+file_organization:
+
+- Components: ComponentName.tsx
+- Server Components mặc định, chỉ thêm 'use client' khi cần
+- Colocate related files (component, styles, tests)
+
+patterns:
+
+- Server Components cho data fetching
+- Client Components chỉ khi cần interactivity
+- Custom hooks cho reusable logic
+- Compound components cho complex UI
+
+## 📝 CQRS PATTERN TEMPLATE
+
+### Command Template (Create/Update/Delete)
+
+```csharp
+// Location: ShopxBase.Application/Features/{Feature}/Commands/{Action}/
+
+// 1. Command
+public record {Action}{Feature}Command : IRequest<{ResponseType}>
+{
+    // Properties
+}
+
+// 2. Validator
+public class {Action}{Feature}CommandValidator : AbstractValidator<{Action}{Feature}Command>
+{
+    public {Action}{Feature}CommandValidator()
+    {
+        // Validation rules
+    }
+}
+
+// 3. Handler
+public class {Action}{Feature}CommandHandler : IRequestHandler<{Action}{Feature}Command, {ResponseType}>
+{
+    private readonly IApplicationDbContext _context;
+
+    public {Action}{Feature}CommandHandler(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<{ResponseType}> Handle({Action}{Feature}Command request, CancellationToken cancellationToken)
+    {
+        // Implementation
+    }
+}
+```
+
+### Query Template (Read)
+
+```csharp
+// Location: ShopxBase.Application/Features/{Feature}/Queries/{Action}/
+
+// 1. Query
+public record {Action}Query : IRequest<{ResponseType}>
+{
+    // Parameters
+}
+
+// 2. Handler
+public class {Action}QueryHandler : IRequestHandler<{Action}Query, {ResponseType}>
+{
+    private readonly IApplicationDbContext _context;
+
+    public async Task<{ResponseType}> Handle({Action}Query request, CancellationToken cancellationToken)
+    {
+        // Implementation with .AsNoTracking()
+    }
+}
+```
+
+## 🗄️ DATABASE & ENTITY RULES
+
+### Entity Template
+
+```csharp
+// Location: ShopxBase.Domain/Entities/
+
+public class {EntityName} : BaseEntity
+{
+    // Properties
+    public string Name { get; set; } = string.Empty;
+
+    // Navigation properties
+    public virtual ICollection<RelatedEntity> RelatedEntities { get; set; } = new List<RelatedEntity>();
+}
+```
+
+### BaseEntity Properties (Tự động có)
+
+```csharp
+public int Id { get; set; }
+public DateTime CreatedAt { get; set; }
+public DateTime? UpdatedAt { get; set; }
+public bool IsDeleted { get; set; }  // Soft delete
+```
+
+### Supabase Integration Rules
+
+- Sử dụng Supabase Auth cho authentication
+- Sync users giữa Supabase Auth và database qua triggers
+- Row Level Security (RLS) cho sensitive data
+- Supabase Storage cho file uploads
+
+## 🔐 SECURITY RULES
+
+authentication:
+
+- Supabase JWT tokens cho frontend authentication
+- Validate JWT với Supabase JWKS endpoint
+- Custom JWT cho internal services (optional)
+
+authorization:
+
+- Role-based: Admin, Seller, Customer
+- [Authorize] attribute cho protected endpoints
+- [AllowAnonymous] cho public endpoints
+
+data_protection:
+
+- Soft delete (IsDeleted = true) thay vì hard delete
+- Không log sensitive data (passwords, tokens)
+- Validate tất cả input với FluentValidation
+- Parameterized queries (EF Core tự động)
+
+## 📊 DTO & RESPONSE PATTERNS
+
+### Standard API Response
+
+```csharp
+public class ApiResponse<T>
+{
+    public bool Success { get; set; }
+    public string Message { get; set; }
+    public T? Data { get; set; }
+    public List<string>? Errors { get; set; }
+}
+```
+
+### Pagination Response
+
+```csharp
+public class PaginationResponse<T>
+{
+    public List<T> Items { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
+    public bool HasPreviousPage { get; set; }
+    public bool HasNextPage { get; set; }
+}
+```
+
+### DTO Naming Convention
+
+- {Entity}Dto - Full entity representation
+- {Entity}ListDto - Minimal for list views
+- {Entity}DetailDto - Detailed with relations
+- Create{Entity}Dto - For creation
+- Update{Entity}Dto - For updates
+
+## 🎨 FRONTEND COMPONENT PATTERNS
+
+### React Component Template
+
+```tsx
+// Server Component (default)
+interface {ComponentName}Props {
+  // Props definition
+}
+
+export default async function {ComponentName}({ props }: {ComponentName}Props) {
+  // Data fetching here
+  return (
+    <div>
+      {/* JSX */}
+    </div>
+  );
+}
+```
+
+```tsx
+// Client Component (when needed)
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface {ComponentName}Props {
+  // Props definition
+}
+
+export function {ComponentName}({ props }: {ComponentName}Props) {
+  const [state, setState] = useState();
+
+  return (
+    <div>
+      {/* JSX */}
+    </div>
+  );
+}
+```
+
+### API Client Pattern
+
+```typescript
+// lib/api-client.ts
+import axios from "axios";
+
+export const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
+// Interceptors for auth token
+apiClient.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+## ⚡ PERFORMANCE GUIDELINES
+
+### Backend
+
+- AsNoTracking() cho read-only queries
+- Pagination bắt buộc cho list endpoints
+- Select() chỉ columns cần thiết
+- Include() chỉ relations cần thiết
+- Sử dụng compiled queries cho hot paths
+- Connection pooling với Supabase
+
+### Frontend
+
+- Server Components mặc định
+- Lazy loading cho heavy components
+- Image optimization với next/image
+- Code splitting tự động với App Router
+- Memoization với useMemo/useCallback khi cần
+
+## 🧪 TESTING CONVENTIONS
+
+### Backend Tests
+
+```
+tests/
+├── ShopxBase.UnitTests/           # Unit tests for Application layer
+├── ShopxBase.IntegrationTests/    # Integration tests with database
+└── ShopxBase.FunctionalTests/     # End-to-end API tests
+```
+
+### Frontend Tests
+
+- Component tests với React Testing Library
+- E2E tests với Playwright (recommended)
+- Unit tests cho utilities và hooks
+
+## 📦 DEPENDENCY RULES
+
+### Backend NuGet Packages
+
+```
+- MediatR (CQRS)
+- FluentValidation (Validation)
+- AutoMapper (Object mapping)
+- Npgsql.EntityFrameworkCore.PostgreSQL (Database)
+- Microsoft.AspNetCore.Authentication.JwtBearer (Auth)
+- Supabase (Supabase client)
+```
+
+### Frontend npm Packages
+
+```
+- next (Framework)
+- react, react-dom (UI)
+- axios (HTTP client)
+- tailwindcss (Styling)
+- lucide-react (Icons)
+- class-variance-authority, clsx, tailwind-merge (Utility)
+- @supabase/supabase-js (Supabase client)
+- zustand (State management - recommended)
+- react-hook-form + zod (Forms - recommended)
+```
+
+## 🚀 DEPLOYMENT & ENVIRONMENT
+
+### Environment Variables
+
+```
+# Backend (.env)
+SUPABASE_HOST=
+SUPABASE_PORT=
+SUPABASE_DATABASE=
+SUPABASE_USER=
+SUPABASE_PASSWORD=
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_JWT_SECRET=
+JWT_SECRET=
+JWT_ISSUER=
+JWT_AUDIENCE=
+
+# Frontend (.env.local)
+NEXT_PUBLIC_API_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+### Docker Support (Recommended)
+
+```yaml
+# docker-compose.yml structure
+services:
+  api:
+    build: ./backend
+    ports: ["5000:80"]
+  web:
+    build: ./frontend
+    ports: ["3000:3000"]
+```
+
+## 📋 GIT CONVENTIONS
+
+### Branch Naming
+
+- feature/{feature-name}
+- bugfix/{bug-description}
+- hotfix/{hotfix-description}
+- release/{version}
+
+### Commit Messages
+
+```
+feat: Add new feature
+fix: Fix bug
+docs: Documentation changes
+style: Code style changes (formatting)
+refactor: Code refactoring
+test: Add/update tests
+chore: Build/config changes
+```
+
+## ⚠️ ANTI-PATTERNS TO AVOID
+
+### Backend
+
+- ❌ Business logic trong Controllers
+- ❌ Direct database access trong API layer
+- ❌ Hard-coded connection strings
+- ❌ Synchronous database calls
+- ❌ N+1 query problems
+- ❌ Returning entities directly (use DTOs)
+- ❌ Catching generic Exception without handling
+
+### Frontend
+
+- ❌ 'use client' khi không cần thiết
+- ❌ Prop drilling sâu (use context/state management)
+- ❌ Inline styles thay vì Tailwind classes
+- ❌ Direct DOM manipulation
+- ❌ Hardcoded API URLs
+- ❌ Missing loading/error states
+
+## ✅ CHECKLIST FOR NEW FEATURES
+
+### Backend Checklist
+
+- [ ] Entity trong Domain layer
+- [ ] DTOs trong Application layer
+- [ ] Command/Query với Handler
+- [ ] Validator cho Commands
+- [ ] Controller endpoint
+- [ ] Authorization attribute
+- [ ] Unit tests
+
+### Frontend Checklist
+
+- [ ] TypeScript types
+- [ ] Component với proper props
+- [ ] Loading state
+- [ ] Error handling
+- [ ] Responsive design
+- [ ] Accessibility (ARIA)
+- [ ] Tests
+
+## 🔄 MIGRATION GUIDELINES
+
+### Database Migrations
+
+```bash
+# Add migration
+dotnet ef migrations add {MigrationName} -p ShopxBase.Infrastructure -s ShopxBase.Api
+
+# Update database
+dotnet ef database update -p ShopxBase.Infrastructure -s ShopxBase.Api
+```
+
+### Breaking Changes
+
+- Bump API version (v1 -> v2)
+- Deprecation warnings trước khi remove
+- Migration scripts cho data changes
+
+---
+
+# END OF ANTIGRAVITY RULES
+
+# Tuân thủ các quy tắc này để đảm bảo code quality và team consistency

@@ -1,8 +1,6 @@
 namespace ShopxBase.Application.DTOs.Coupon;
 
-/// <summary>
-/// Coupon DTO for read operations
-/// </summary>
+
 public class CouponDto
 {
     public int Id { get; set; }
@@ -23,9 +21,7 @@ public class CouponDto
     public DateTime CreatedAt { get; set; }
 }
 
-/// <summary>
-/// Create Coupon DTO
-/// </summary>
+
 public class CreateCouponDto
 {
     public string Name { get; set; }
@@ -40,9 +36,7 @@ public class CreateCouponDto
     public int Status { get; set; }
 }
 
-/// <summary>
-/// Update Coupon DTO
-/// </summary>
+
 public class UpdateCouponDto
 {
     public int Id { get; set; }
@@ -58,9 +52,6 @@ public class UpdateCouponDto
     public int Status { get; set; }
 }
 
-/// <summary>
-/// Validate Coupon DTO
-/// </summary>
 public class ValidateCouponDto
 {
     public string Code { get; set; }

@@ -9,9 +9,7 @@ using ShopxBase.Application.Settings;
 
 namespace ShopxBase.Infrastructure.Services;
 
-/// <summary>
-/// Service for interacting with Supabase Authentication API
-/// </summary>
+
 public class SupabaseAuthService : ISupabaseAuthService
 {
     private readonly HttpClient _httpClient;

@@ -84,6 +84,7 @@ builder.Services.Configure<SupabaseSettings>(options =>
     options.Url = supabaseUrl;
     options.AnonKey = supabaseAnonKey;
     options.JwtSecret = supabaseJwtSecret;
+    options.ServiceRoleKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 });
 
 // 5. Configure JWT Settings (legacy - still used for custom tokens)
@@ -199,6 +200,9 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 // Add Supabase Auth Service
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
+
+// Add Supabase Storage Service
+builder.Services.AddHttpClient<ISupabaseStorageService, SupabaseStorageService>();
 
 // 11. Add CORS
 builder.Services.AddCors(options =>
