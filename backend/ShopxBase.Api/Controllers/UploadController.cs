@@ -21,7 +21,7 @@ public class UploadController : ControllerBase
     }
 
     [HttpPost("product")]
-    [Authorize]
+    [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> UploadProductImage(IFormFile file)
     {
         var result = await _storageService.UploadAsync(file, "products");
@@ -29,7 +29,7 @@ public class UploadController : ControllerBase
     }
 
     [HttpPost("category")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UploadCategoryImage(IFormFile file)
     {
         var result = await _storageService.UploadAsync(file, "categories");
@@ -37,7 +37,7 @@ public class UploadController : ControllerBase
     }
 
     [HttpPost("brand")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UploadBrandImage(IFormFile file)
     {
         var result = await _storageService.UploadAsync(file, "brands");
@@ -53,7 +53,7 @@ public class UploadController : ControllerBase
     }
 
     [HttpPost("multiple")]
-    [Authorize]
+    [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> UploadMultiple(
         [FromForm] List<IFormFile> files,
         [FromQuery] string bucket = "products",
@@ -84,7 +84,7 @@ public class UploadController : ControllerBase
     }
 
     [HttpDelete]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteFile(
         [FromQuery] string filePath,
         [FromQuery] string bucket)
