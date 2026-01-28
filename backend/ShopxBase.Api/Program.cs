@@ -241,6 +241,10 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
+
+// Add middleware to inject roles from database into user claims BEFORE authorization
+app.UseMiddleware<ShopxBase.Api.Middleware.AddRolesFromDatabaseMiddleware>();
+
 app.UseAuthorization();
 
 app.MapControllers();

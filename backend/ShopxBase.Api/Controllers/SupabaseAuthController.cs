@@ -233,6 +233,54 @@ public class SupabaseAuthController : ControllerBase
     }
 
     /// <summary>
+    /// Get current user info with roles from ASP.NET Core Identity
+    /// Use this endpoint to get roles for authorization
+    /// </summary>
+    [HttpGet("me/with-roles")]
+    [Authorize]
+    public async Task<IActionResult> GetCurrentUserWithRoles()
+    {
+        var accessToken = GetAccessToken();
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            return Unauthorized(new { success = false, message = "Access token không hợp lệ" });
+        }
+
+        var supabaseUser = await _authService.GetUserAsync(accessToken);
+        if (supabaseUser == null)
+        {
+            return Unauthorized(new { success = false, message = "Không thể lấy thông tin người dùng từ Supabase" });
+        }
+
+        // Fetch user from AppUser to get roles
+        var appUser = await _userManager.FindByEmailAsync(supabaseUser.Email);
+        if (appUser == null)
+        {
+            return NotFound(new { success = false, message = "Người dùng không tồn tại trong hệ thống" });
+        }
+
+        // Get roles from AspNetUserRoles
+        var roles = await _userManager.GetRolesAsync(appUser);
+
+        return Ok(new
+        {
+            success = true,
+            user = new
+            {
+                id = supabaseUser.Id,
+                email = supabaseUser.Email,
+                phone = supabaseUser.Phone,
+                emailConfirmed = supabaseUser.EmailConfirmedAt.HasValue,
+                phoneConfirmed = supabaseUser.PhoneConfirmedAt.HasValue,
+                lastSignInAt = supabaseUser.LastSignInAt,
+                createdAt = supabaseUser.CreatedAt,
+                roles = roles.ToList(),
+                metadata = supabaseUser.UserMetadata
+            }
+        });
+    }
+
+    /// <summary>
     /// Update user metadata
     /// </summary>
     [HttpPut("me")]
