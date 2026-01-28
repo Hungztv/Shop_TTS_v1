@@ -4,10 +4,7 @@ using ShopxBase.Domain.Entities;
 
 namespace ShopxBase.Api.Middleware;
 
-/// <summary>
-/// Middleware to add roles from ASP.NET Core Identity to HttpContext.User claims
-/// This allows role-based authorization to work with Supabase JWT tokens
-/// </summary>
+
 public class AddRolesFromDatabaseMiddleware
 {
     private readonly RequestDelegate _next;
