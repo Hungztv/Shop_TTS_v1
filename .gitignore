@@ -51,7 +51,7 @@ launchSettings.json
 *.nuget.targets
 
 # Entity Framework Core
-**/Migrations/
+# **/Migrations/  # Uncomment to ignore migrations
 
 # appsettings local
 appsettings.local.json
