@@ -71,6 +71,22 @@ builder.Configuration["JwtSettings:ExpiryMinutes"] = jwtExpiryMinutes;
 // Add connection string to configuration for Infrastructure layer
 builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
 
+// 3.5 Load Email Settings from .env
+var emailHost = Environment.GetEnvironmentVariable("EMAIL_HOST") ?? "smtp.gmail.com";
+var emailPort = Environment.GetEnvironmentVariable("EMAIL_PORT") ?? "587";
+var emailMail = Environment.GetEnvironmentVariable("EMAIL_MAIL") ?? "";
+var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD") ?? "";
+var emailDisplayName = Environment.GetEnvironmentVariable("EMAIL_DISPLAY_NAME") ?? "ShopX Support";
+var emailEnableSsl = Environment.GetEnvironmentVariable("EMAIL_ENABLE_SSL") ?? "true";
+
+// Add Email settings to Configuration
+builder.Configuration["EmailSettings:Host"] = emailHost;
+builder.Configuration["EmailSettings:Port"] = emailPort;
+builder.Configuration["EmailSettings:Mail"] = emailMail;
+builder.Configuration["EmailSettings:Password"] = emailPassword;
+builder.Configuration["EmailSettings:DisplayName"] = emailDisplayName;
+builder.Configuration["EmailSettings:EnableSsl"] = emailEnableSsl;
+
 // 4. Configure Supabase Settings
 var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL")
     ?? throw new InvalidOperationException("SUPABASE_URL is not set in .env file");
@@ -203,6 +219,12 @@ builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 
 // Add Supabase Storage Service
 builder.Services.AddHttpClient<ISupabaseStorageService, SupabaseStorageService>();
+
+// Add Email Service
+builder.Services.Configure<ShopxBase.Application.Settings.EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<ShopxBase.Application.Interfaces.IEmailService,
+    ShopxBase.Infrastructure.Services.EmailService>();
 
 // 11. Add CORS
 builder.Services.AddCors(options =>
