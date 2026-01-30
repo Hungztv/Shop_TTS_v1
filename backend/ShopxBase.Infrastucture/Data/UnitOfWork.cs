@@ -33,6 +33,7 @@ namespace ShopxBase.Infrastructure.Data
         public IRepository<Slider> Sliders => GetRepository<Slider>();
         public IRepository<Contact> Contacts => GetRepository<Contact>();
         public IRepository<Cart> Carts => GetRepository<Cart>();
+        public IRepository<ContactMessage> ContactMessages => GetRepository<ContactMessage>();
 
         // Specialized Repositories (Custom Queries)
         private IUserRepository _userRepository;
