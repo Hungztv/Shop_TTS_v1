@@ -229,12 +229,18 @@ builder.Services.AddScoped<ShopxBase.Application.Interfaces.IEmailService,
 // 11. Add CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
+    options.AddPolicy("AllowSpecificOrigins",
+        policy =>
+        {
+            policy.WithOrigins(
+                    "http://localhost:3000",                  // Cho phép Localhost
+                    "https://shop-vibe-frontend.vercel.app",  // ⚠️ Thay bằng link Vercel của bạn
+                    "https://shop-tts-v1.vercel.app"          // Thêm các domain khác nếu có
+                )
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+                // .AllowCredentials(); // Bật dòng này nếu bạn dùng Cookie, nếu chỉ dùng JWT Header thì không cần
+        });
 });
 
 // Add logging
@@ -259,8 +265,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// app.UseHttpsRedirection(); // Disabled for development (HTTP only)
-app.UseCors("AllowAll");
+app.UseHttpsRedirection(); // Disabled for development (HTTP only)
+app.UseCors("AllowSpecificOrigins");
 
 app.UseAuthentication();
 
