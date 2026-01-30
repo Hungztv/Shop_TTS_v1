@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Search,
   ShoppingCart,
@@ -17,6 +18,7 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const categories = [
   { name: "Điện thoại", icon: "📱", href: "#" },
@@ -34,6 +36,15 @@ export default function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Auth state
+  const { user, isAuthenticated, signOut } = useAuth();
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    await signOut();
+    setIsUserMenuOpen(false);
+  };
 
   // Handle scroll effect
   useEffect(() => {
@@ -196,7 +207,7 @@ export default function Header() {
                 <div className="text-left hidden lg:block">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Xin chào</p>
                   <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                    Tài khoản
+                    {isAuthenticated ? (user?.metadata?.full_name || user?.email?.split('@')[0] || 'Bạn') : 'Tài khoản'}
                   </p>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isUserMenuOpen ? "rotate-180" : ""
@@ -206,36 +217,74 @@ export default function Header() {
               {/* User Dropdown */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 glass-card rounded-2xl p-2 animate-fade-in-down shadow-2xl">
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-700">
-                    <p className="font-semibold text-slate-800 dark:text-white">
-                      Chào mừng bạn!
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Đăng nhập để xem ưu đãi
-                    </p>
-                  </div>
-                  <nav className="py-2">
-                    {[
-                      { icon: User, label: "Tài khoản của tôi", href: "#" },
-                      { icon: Package, label: "Đơn hàng", href: "#" },
-                      { icon: Heart, label: "Yêu thích", href: "#" },
-                      { icon: Settings, label: "Cài đặt", href: "#" },
-                    ].map((item, idx) => (
-                      <a
-                        key={idx}
-                        href={item.href}
-                        className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-colors"
-                      >
-                        <item.icon className="w-5 h-5" />
-                        {item.label}
-                      </a>
-                    ))}
-                  </nav>
-                  <div className="p-2 border-t border-slate-100 dark:border-slate-700">
-                    <button className="w-full flex items-center justify-center gap-2 btn-primary py-3">
-                      Đăng nhập
-                    </button>
-                  </div>
+                  {isAuthenticated ? (
+                    // ĐÃ ĐĂNG NHẬP
+                    <>
+                      <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+                        <p className="font-semibold text-slate-800 dark:text-white">
+                          {user?.metadata?.full_name || 'Xin chào!'}
+                        </p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          {user?.email}
+                        </p>
+                      </div>
+                      <nav className="py-2">
+                        {[
+                          { icon: User, label: "Tài khoản của tôi", href: "/account" },
+                          { icon: Package, label: "Đơn hàng", href: "/orders" },
+                          { icon: Heart, label: "Yêu thích", href: "/wishlist" },
+                          { icon: Settings, label: "Cài đặt", href: "/settings" },
+                        ].map((item, idx) => (
+                          <Link
+                            key={idx}
+                            href={item.href}
+                            className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-colors"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <item.icon className="w-5 h-5" />
+                            {item.label}
+                          </Link>
+                        ))}
+                      </nav>
+                      <div className="p-2 border-t border-slate-100 dark:border-slate-700">
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 py-3 rounded-xl transition-colors"
+                        >
+                          <LogOut className="w-5 h-5" />
+                          Đăng xuất
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    // CHƯA ĐĂNG NHẬP
+                    <>
+                      <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+                        <p className="font-semibold text-slate-800 dark:text-white">
+                          Chào mừng bạn!
+                        </p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          Đăng nhập để xem ưu đãi
+                        </p>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        <Link
+                          href="/login"
+                          className="w-full flex items-center justify-center gap-2 btn-primary py-3"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          Đăng nhập
+                        </Link>
+                        <Link
+                          href="/register"
+                          className="w-full flex items-center justify-center gap-2 border-2 border-violet-500 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 py-3 rounded-xl transition-colors font-semibold"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          Đăng ký
+                        </Link>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
