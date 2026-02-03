@@ -66,8 +66,31 @@ namespace ShopxBase.Infrastructure.Data.Repositories
         }
 
         // UPDATE
+        public void Update(AppUser entity)
+        {
+            // Detach any existing tracked entity with the same key
+            var existingEntry = _context.ChangeTracker.Entries<AppUser>()
+                .FirstOrDefault(e => e.Entity.Id == entity.Id);
+
+            if (existingEntry != null)
+            {
+                existingEntry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+            }
+
+            _dbSet.Update(entity);
+        }
+
         public async Task<AppUser> UpdateAsync(AppUser entity)
         {
+            // Detach any existing tracked entity with the same key
+            var existingEntry = _context.ChangeTracker.Entries<AppUser>()
+                .FirstOrDefault(e => e.Entity.Id == entity.Id);
+
+            if (existingEntry != null)
+            {
+                existingEntry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+            }
+
             _dbSet.Update(entity);
             return await Task.FromResult(entity);
         }

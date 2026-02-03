@@ -6,17 +6,25 @@ public class UpdateUserProfileCommandValidator : AbstractValidator<UpdateUserPro
 {
     public UpdateUserProfileCommandValidator()
     {
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("User Id là bắt buộc");
+        // Id is set automatically in controller, validation removed
 
-        RuleFor(x => x.FullName)
-            .NotEmpty().WithMessage("Họ tên là bắt buộc");
+        When(x => !string.IsNullOrEmpty(x.FullName), () =>
+        {
+            RuleFor(x => x.FullName)
+                .MaximumLength(200).WithMessage("Họ tên không được quá 200 ký tự");
+        });
 
-        RuleFor(x => x.Occupation)
-            .NotEmpty().WithMessage("Nghề nghiệp là bắt buộc");
+        When(x => !string.IsNullOrEmpty(x.Occupation), () =>
+        {
+            RuleFor(x => x.Occupation)
+                .MaximumLength(100).WithMessage("Nghề nghiệp không được quá 100 ký tự");
+        });
 
-        RuleFor(x => x.Address)
-            .NotEmpty().WithMessage("Địa chỉ là bắt buộc");
+        When(x => !string.IsNullOrEmpty(x.Address), () =>
+        {
+            RuleFor(x => x.Address)
+                .MaximumLength(500).WithMessage("Địa chỉ không được quá 500 ký tự");
+        });
 
         RuleFor(x => x.DateOfBirth)
             .LessThan(DateTime.Now).WithMessage("Ngày sinh phải trong quá khứ")

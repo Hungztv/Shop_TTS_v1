@@ -12,6 +12,7 @@ public interface IUserRepository
     Task<IEnumerable<AppUser>> FindAsync(Expression<Func<AppUser, bool>> predicate);
     Task<AppUser> FirstOrDefaultAsync(Expression<Func<AppUser, bool>> predicate);
     Task<AppUser> AddAsync(AppUser entity);
+    void Update(AppUser entity);
     Task<AppUser> UpdateAsync(AppUser entity);
     Task<bool> DeleteAsync(string userId);
     Task<bool> ExistsAsync(string userId);
