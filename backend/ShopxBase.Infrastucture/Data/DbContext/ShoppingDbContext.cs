@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ShopxBase.Domain.Entities;
+using System.Reflection;
 
 namespace ShopxBase.Infrastructure.Data
 {
@@ -35,12 +36,14 @@ namespace ShopxBase.Infrastructure.Data
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            NormalizeDateTimes();
             UpdateTimestamps();
             return await base.SaveChangesAsync(cancellationToken);
         }
 
         public override int SaveChanges()
         {
+            NormalizeDateTimes();
             UpdateTimestamps();
             return base.SaveChanges();
         }
@@ -57,6 +60,46 @@ namespace ShopxBase.Infrastructure.Data
                 else if (entry.State == EntityState.Modified)
                 {
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        private void NormalizeDateTimes()
+        {
+            var entries = ChangeTracker.Entries();
+            foreach (var entry in entries)
+            {
+                if (entry.State != EntityState.Added && entry.State != EntityState.Modified)
+                    continue;
+
+                var entity = entry.Entity;
+                if (entity == null)
+                    continue;
+
+                var props = entity.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                foreach (var prop in props)
+                {
+                    if (prop.PropertyType == typeof(DateTime))
+                    {
+                        var value = (DateTime)prop.GetValue(entity)!;
+                        if (value.Kind == DateTimeKind.Unspecified)
+                            prop.SetValue(entity, DateTime.SpecifyKind(value, DateTimeKind.Utc));
+                        else if (value.Kind == DateTimeKind.Local)
+                            prop.SetValue(entity, value.ToUniversalTime());
+                    }
+                    else if (prop.PropertyType == typeof(DateTime?))
+                    {
+                        var value = (DateTime?)prop.GetValue(entity);
+                        if (value.HasValue)
+                        {
+                            var dt = value.Value;
+                            if (dt.Kind == DateTimeKind.Unspecified)
+                                dt = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+                            else if (dt.Kind == DateTimeKind.Local)
+                                dt = dt.ToUniversalTime();
+                            prop.SetValue(entity, dt);
+                        }
+                    }
                 }
             }
         }
