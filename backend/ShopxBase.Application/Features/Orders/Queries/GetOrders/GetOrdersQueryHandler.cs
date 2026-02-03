@@ -23,22 +23,13 @@ public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, PaginationR
         GetOrdersQuery request,
         CancellationToken cancellationToken)
     {
-        // Build filter predicate
-        Expression<Func<Order, bool>> predicate = o => true;
+        // Build filter - use separate variables for EF Core compatibility
+        string? userId = request.UserId;
+        int? status = request.Status;
 
-        // Apply filters
-        if (!string.IsNullOrEmpty(request.UserId))
-        {
-            var userId = request.UserId;
-            predicate = o => o.UserId == userId;
-        }
-
-        if (request.Status.HasValue)
-        {
-            var status = request.Status.Value;
-            var basePredicate = predicate;
-            predicate = o => basePredicate.Compile()(o) && o.Status == status;
-        }
+        Expression<Func<Order, bool>> predicate = o =>
+            (string.IsNullOrEmpty(userId) || o.UserId == userId) &&
+            (!status.HasValue || o.Status == status.Value);
 
         // Get paginated orders
         var (orders, totalCount) = await _unitOfWork.OrderRepository

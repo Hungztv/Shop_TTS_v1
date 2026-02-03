@@ -1,8 +1,10 @@
 using MediatR;
 using AutoMapper;
 using ShopxBase.Domain.Interfaces;
+using ShopxBase.Domain.Entities;
 using ShopxBase.Application.DTOs.Product;
 using ShopxBase.Application.DTOs.Common;
+using System.Linq.Expressions;
 
 namespace ShopxBase.Application.Features.Products.Queries.GetProducts;
 
@@ -19,15 +21,31 @@ public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, Paginat
 
     public async Task<PaginationResponse<ProductDto>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
     {
-        // 1. Get paginated products
-        var (products, totalCount) = await _unitOfWork.ProductRepository.GetPaginatedAsync(
+        // Build filter
+        int? categoryId = request.CategoryId;
+        int? brandId = request.BrandId;
+        string? search = request.Search?.ToLower();
+        decimal? minPrice = request.MinPrice;
+        decimal? maxPrice = request.MaxPrice;
+
+        Expression<Func<Product, bool>> predicate = p =>
+            !p.IsDeleted &&
+            (!categoryId.HasValue || p.CategoryId == categoryId.Value) &&
+            (!brandId.HasValue || p.BrandId == brandId.Value) &&
+            (string.IsNullOrEmpty(search) || p.Name.ToLower().Contains(search)) &&
+            (!minPrice.HasValue || p.Price >= minPrice.Value) &&
+            (!maxPrice.HasValue || p.Price <= maxPrice.Value);
+
+        // Get filtered and paginated products
+        var (products, totalCount) = await _unitOfWork.ProductRepository.GetFilteredAsync(
+            predicate,
             request.PageNumber,
             request.PageSize);
 
-        // 2. Map entities to DTOs
+        // Map entities to DTOs
         var productDtos = _mapper.Map<List<ProductDto>>(products);
 
-        // 3. Return pagination response (TotalPages, HasNext, HasPrevious are computed)
+        // Return pagination response
         return new PaginationResponse<ProductDto>
         {
             Items = productDtos,
