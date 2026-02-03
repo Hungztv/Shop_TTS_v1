@@ -50,6 +50,11 @@ export const usersService = {
         return res.data.data;
     },
 
+    async updateMe(data: UpdateUserDto): Promise<AppUser> {
+        const res = await api.put<ApiResponse<AppUser>>(`/Users/me`, data);
+        return res.data.data;
+    },
+
     async delete(userId: string): Promise<boolean> {
         await api.delete(`/Users/${userId}`);
         return true;

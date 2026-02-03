@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles, Play, Star, TrendingUp } from "lucide-react";
 
 export default function HeroBanner() {
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [particles, setParticles] = useState<Array<{ left: string; top: string; delay: string; duration: string }>>([]);
 
     // Auto-rotate slides
     useEffect(() => {
@@ -12,6 +13,17 @@ export default function HeroBanner() {
             setCurrentSlide((prev) => (prev + 1) % 3);
         }, 5000);
         return () => clearInterval(interval);
+    }, []);
+
+    // Generate particles on client side only to avoid hydration mismatch
+    useEffect(() => {
+        const newParticles = [...Array(20)].map(() => ({
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            delay: `${Math.random() * 5}s`,
+            duration: `${5 + Math.random() * 5}s`,
+        }));
+        setParticles(newParticles);
     }, []);
 
     return (
@@ -33,15 +45,15 @@ export default function HeroBanner() {
                 />
 
                 {/* Floating particles */}
-                {[...Array(20)].map((_, i) => (
+                {particles.map((p, i) => (
                     <div
                         key={i}
                         className="absolute w-2 h-2 bg-white/20 rounded-full animate-float-slow"
                         style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            animationDelay: `${Math.random() * 5}s`,
-                            animationDuration: `${5 + Math.random() * 5}s`,
+                            left: p.left,
+                            top: p.top,
+                            animationDelay: p.delay,
+                            animationDuration: p.duration,
                         }}
                     />
                 ))}
@@ -288,8 +300,8 @@ export default function HeroBanner() {
                         key={idx}
                         onClick={() => setCurrentSlide(idx)}
                         className={`h-2 rounded-full transition-all duration-300 ${currentSlide === idx
-                                ? "w-8 bg-white"
-                                : "w-2 bg-white/40 hover:bg-white/60"
+                            ? "w-8 bg-white"
+                            : "w-2 bg-white/40 hover:bg-white/60"
                             }`}
                     />
                 ))}

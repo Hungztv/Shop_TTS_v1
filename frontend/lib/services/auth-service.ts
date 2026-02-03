@@ -92,3 +92,20 @@ export async function forgotPassword(email: string): Promise<{ success: boolean 
         return { success: true }; // Luôn trả true để tránh enumeration
     }
 }
+
+// Đổi mật khẩu
+export async function updatePassword(newPassword: string, accessToken: string): Promise<{ success: boolean; message?: string }> {
+    try {
+        const response = await axios.post(
+            `${API_URL}/SupabaseAuth/update-password`,
+            { newPassword },
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        return response.data;
+    } catch (error: any) {
+        return {
+            success: false,
+            message: error.response?.data?.message || 'Đổi mật khẩu thất bại',
+        };
+    }
+}
