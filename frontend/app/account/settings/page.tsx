@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { updatePassword } from '@/lib/services/auth-service';
+import { updatePassword, refreshToken } from '@/lib/services/auth-service';
 import { Lock, Save, Loader2, ShieldCheck } from 'lucide-react';
 import Cookies from 'js-cookie';
 
@@ -29,13 +29,41 @@ export default function SettingsPage() {
         setLoading(true);
 
         try {
-            const accessToken = Cookies.get('accessToken');
+            let accessToken = Cookies.get('accessToken');
+            if (!accessToken) {
+                const refreshTokenValue = Cookies.get('refreshToken');
+                if (refreshTokenValue) {
+                    const refreshResult = await refreshToken(refreshTokenValue);
+                    if (refreshResult.success && refreshResult.accessToken) {
+                        Cookies.set('accessToken', refreshResult.accessToken, { expires: 1 });
+                        if (refreshResult.refreshToken) {
+                            Cookies.set('refreshToken', refreshResult.refreshToken, { expires: 7 });
+                        }
+                        accessToken = refreshResult.accessToken;
+                    }
+                }
+            }
+
             if (!accessToken) {
                 setMessage({ type: 'error', text: 'Phiên đăng nhập hết hạn' });
                 return;
             }
 
-            const result = await updatePassword(password, accessToken);
+            let result = await updatePassword(password, accessToken);
+
+            if (!result.success && result.status === 401) {
+                const refreshTokenValue = Cookies.get('refreshToken');
+                if (refreshTokenValue) {
+                    const refreshResult = await refreshToken(refreshTokenValue);
+                    if (refreshResult.success && refreshResult.accessToken) {
+                        Cookies.set('accessToken', refreshResult.accessToken, { expires: 1 });
+                        if (refreshResult.refreshToken) {
+                            Cookies.set('refreshToken', refreshResult.refreshToken, { expires: 7 });
+                        }
+                        result = await updatePassword(password, refreshResult.accessToken);
+                    }
+                }
+            }
 
             if (result.success) {
                 setMessage({ type: 'success', text: 'Đổi mật khẩu thành công!' });

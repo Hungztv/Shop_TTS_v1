@@ -94,7 +94,7 @@ export async function forgotPassword(email: string): Promise<{ success: boolean 
 }
 
 // Đổi mật khẩu
-export async function updatePassword(newPassword: string, accessToken: string): Promise<{ success: boolean; message?: string }> {
+export async function updatePassword(newPassword: string, accessToken: string): Promise<{ success: boolean; message?: string; status?: number }> {
     try {
         const response = await axios.post(
             `${API_URL}/SupabaseAuth/update-password`,
@@ -106,6 +106,7 @@ export async function updatePassword(newPassword: string, accessToken: string): 
         return {
             success: false,
             message: error.response?.data?.message || 'Đổi mật khẩu thất bại',
+            status: error.response?.status,
         };
     }
 }
