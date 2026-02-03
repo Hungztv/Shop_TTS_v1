@@ -1,146 +1,74 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryNav from "@/components/ui/CategoryNav";
 import ProductCard from "@/components/ui/ProductCard";
 import { ArrowRight, Flame, Sparkles, TrendingUp, Zap } from "lucide-react";
-
-// Sample product data
-const trendingProducts = [
-  {
-    id: 1,
-    name: "iPhone 16 Pro Max 256GB - Titan Đen",
-    image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&h=400&fit=crop",
-    price: 34990000,
-    originalPrice: 41990000,
-    rating: 4.9,
-    reviews: 2847,
-    badge: "sale" as const,
-    category: "Điện thoại",
-  },
-  {
-    id: 2,
-    name: "MacBook Pro 14 inch M3 Pro",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop",
-    price: 52990000,
-    rating: 4.8,
-    reviews: 1253,
-    badge: "hot" as const,
-    category: "Laptop",
-  },
-  {
-    id: 3,
-    name: "AirPods Pro 2nd Generation",
-    image: "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=400&h=400&fit=crop",
-    price: 5990000,
-    originalPrice: 6990000,
-    rating: 4.7,
-    reviews: 5672,
-    badge: "sale" as const,
-    category: "Phụ kiện",
-  },
-  {
-    id: 4,
-    name: "Apple Watch Series 9 GPS 45mm",
-    image: "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop",
-    price: 12990000,
-    rating: 4.6,
-    reviews: 892,
-    badge: "new" as const,
-    category: "Đồng hồ",
-  },
-];
-
-const newArrivals = [
-  {
-    id: 5,
-    name: "Samsung Galaxy S24 Ultra 512GB",
-    image: "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=400&fit=crop",
-    price: 31990000,
-    originalPrice: 35990000,
-    rating: 4.8,
-    reviews: 1567,
-    badge: "new" as const,
-    category: "Điện thoại",
-  },
-  {
-    id: 6,
-    name: "Sony WH-1000XM5 Wireless",
-    image: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=400&h=400&fit=crop",
-    price: 7990000,
-    originalPrice: 9490000,
-    rating: 4.9,
-    reviews: 3421,
-    badge: "sale" as const,
-    category: "Tai nghe",
-  },
-  {
-    id: 7,
-    name: "iPad Pro 12.9 inch M2 256GB",
-    image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=400&fit=crop",
-    price: 29990000,
-    rating: 4.7,
-    reviews: 756,
-    category: "Máy tính bảng",
-  },
-  {
-    id: 8,
-    name: "DJI Mini 4 Pro Fly More Combo",
-    image: "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=400&h=400&fit=crop",
-    price: 24990000,
-    rating: 4.8,
-    reviews: 234,
-    badge: "hot" as const,
-    category: "Thiết bị bay",
-  },
-];
-
-const flashDeals = [
-  {
-    id: 9,
-    name: "JBL Charge 5 Bluetooth Speaker",
-    image: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&h=400&fit=crop",
-    price: 2990000,
-    originalPrice: 4490000,
-    rating: 4.6,
-    reviews: 1823,
-    badge: "sale" as const,
-    category: "Loa",
-  },
-  {
-    id: 10,
-    name: "Logitech MX Master 3S",
-    image: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&h=400&fit=crop",
-    price: 2490000,
-    originalPrice: 2990000,
-    rating: 4.8,
-    reviews: 967,
-    badge: "sale" as const,
-    category: "Phụ kiện",
-  },
-  {
-    id: 11,
-    name: "Samsung T7 SSD 1TB",
-    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400&h=400&fit=crop",
-    price: 2290000,
-    originalPrice: 3290000,
-    rating: 4.7,
-    reviews: 2145,
-    badge: "sale" as const,
-    category: "Lưu trữ",
-  },
-  {
-    id: 12,
-    name: "Anker 65W USB-C Charger",
-    image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=400&h=400&fit=crop",
-    price: 890000,
-    originalPrice: 1290000,
-    rating: 4.5,
-    reviews: 3567,
-    badge: "sale" as const,
-    category: "Sạc",
-  },
-];
+import { productsPublicService, Product } from "@/lib/services/public-api";
 
 export default function Home() {
+  const [flashDeals, setFlashDeals] = useState<Product[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      // Load different product sets
+      const [flashRes, trendingRes, newRes] = await Promise.all([
+        // Flash deals: random products (could be based on discount later)
+        productsPublicService.getAll({ pageSize: 4, sortBy: 'price', sortOrder: 'asc' }),
+        // Trending: most reviewed/rated products
+        productsPublicService.getAll({ pageSize: 4, sortBy: 'createdAt', sortOrder: 'desc' }),
+        // New arrivals: newest products
+        productsPublicService.getAll({ pageSize: 4, page: 2 }),
+      ]);
+
+      setFlashDeals(flashRes.items);
+      setTrendingProducts(trendingRes.items);
+      setNewArrivals(newRes.items);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN').format(price);
+  };
+
+  // Transform Product to ProductCard props
+  const mapProduct = (product: Product) => ({
+    id: product.id,
+    name: product.name,
+    image: product.image || 'https://placehold.co/400x400?text=No+Image',
+    price: product.price,
+    originalPrice: product.capitalPrice && product.capitalPrice > product.price ? product.capitalPrice : undefined,
+    rating: product.averageRating || 0,
+    reviews: product.totalReviews || 0,
+    category: product.categoryName || '',
+    badge: product.capitalPrice && product.capitalPrice > product.price ? 'sale' as const : undefined,
+    slug: product.slug,
+  });
+
+  const ProductGridSkeleton = () => (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="animate-pulse">
+          <div className="bg-slate-200 rounded-2xl aspect-square mb-3"></div>
+          <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+          <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="bg-slate-50">
       {/* Hero Banner */}
@@ -162,11 +90,11 @@ export default function Home() {
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-800">
                   Flash Sale
                 </h2>
-                <p className="text-slate-500">Kết thúc sau: 02:45:30</p>
+                <p className="text-slate-500">Ưu đãi có giới hạn!</p>
               </div>
             </div>
             <a
-              href="#"
+              href="/products"
               className="hidden sm:flex items-center gap-2 text-violet-600 hover:text-violet-700 font-medium transition-colors"
             >
               Xem tất cả
@@ -175,11 +103,17 @@ export default function Home() {
           </div>
 
           {/* Products Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {flashDeals.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
-          </div>
+          {loading ? (
+            <ProductGridSkeleton />
+          ) : flashDeals.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {flashDeals.map((product) => (
+                <ProductCard key={product.id} {...mapProduct(product)} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-slate-500 py-8">Chưa có sản phẩm nào</p>
+          )}
         </div>
       </section>
 
@@ -200,7 +134,7 @@ export default function Home() {
               </div>
             </div>
             <a
-              href="#"
+              href="/products"
               className="hidden sm:flex items-center gap-2 text-violet-600 hover:text-violet-700 font-medium transition-colors"
             >
               Xem tất cả
@@ -209,11 +143,17 @@ export default function Home() {
           </div>
 
           {/* Products Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {trendingProducts.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
-          </div>
+          {loading ? (
+            <ProductGridSkeleton />
+          ) : trendingProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {trendingProducts.map((product) => (
+                <ProductCard key={product.id} {...mapProduct(product)} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-slate-500 py-8">Chưa có sản phẩm nào</p>
+          )}
         </div>
       </section>
 
@@ -244,10 +184,10 @@ export default function Home() {
                 <p className="text-violet-100 mb-6 text-lg">
                   Cơ hội sở hữu phụ kiện chính hãng với giá tốt nhất. Chỉ áp dụng trong tuần này!
                 </p>
-                <button className="bg-white text-violet-600 px-8 py-4 rounded-xl font-semibold hover:bg-violet-50 transition-colors inline-flex items-center gap-2">
+                <a href="/products" className="bg-white text-violet-600 px-8 py-4 rounded-xl font-semibold hover:bg-violet-50 transition-colors inline-flex items-center gap-2">
                   Mua ngay
                   <ArrowRight className="w-5 h-5" />
-                </button>
+                </a>
               </div>
               <div className="hidden md:flex justify-center">
                 <div className="relative">
@@ -281,7 +221,7 @@ export default function Home() {
               </div>
             </div>
             <a
-              href="#"
+              href="/products"
               className="hidden sm:flex items-center gap-2 text-violet-600 hover:text-violet-700 font-medium transition-colors"
             >
               Xem tất cả
@@ -290,11 +230,17 @@ export default function Home() {
           </div>
 
           {/* Products Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {newArrivals.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
-          </div>
+          {loading ? (
+            <ProductGridSkeleton />
+          ) : newArrivals.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {newArrivals.map((product) => (
+                <ProductCard key={product.id} {...mapProduct(product)} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-slate-500 py-8">Chưa có sản phẩm nào</p>
+          )}
         </div>
       </section>
 

@@ -6,6 +6,7 @@ import { Heart, ShoppingCart, Star, Eye, Zap } from "lucide-react";
 interface ProductCardProps {
     id: number;
     name: string;
+    slug?: string;
     image: string;
     price: number;
     originalPrice?: number;
@@ -16,7 +17,9 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({
+    id,
     name,
+    slug,
     image,
     price,
     originalPrice,
@@ -25,6 +28,7 @@ export default function ProductCard({
     badge,
     category,
 }: ProductCardProps) {
+    const productUrl = slug ? `/products/${slug}` : `/products/${id}`;
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -85,10 +89,10 @@ export default function ProductCard({
                 <div className="absolute top-3 left-3 z-10">
                     <span
                         className={`badge flex items-center gap-1 ${badge === "sale"
-                                ? "badge-sale"
-                                : badge === "new"
-                                    ? "badge-new"
-                                    : "badge-hot"
+                            ? "badge-sale"
+                            : badge === "new"
+                                ? "badge-new"
+                                : "badge-hot"
                             }`}
                     >
                         {badge === "hot" && <Zap className="w-3 h-3" />}
@@ -104,8 +108,8 @@ export default function ProductCard({
                     setIsWishlisted(!isWishlisted);
                 }}
                 className={`absolute top-3 right-3 z-10 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${isWishlisted
-                        ? "bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30"
-                        : "glass hover:bg-white"
+                    ? "bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30"
+                    : "glass hover:bg-white"
                     }`}
             >
                 <Heart
@@ -137,8 +141,8 @@ export default function ProductCard({
                     <button
                         onClick={handleAddToCart}
                         className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shadow-xl ${isAddingToCart
-                                ? "bg-emerald-500 text-white scale-110"
-                                : "bg-gradient-to-br from-violet-600 to-purple-700 text-white hover:scale-110"
+                            ? "bg-emerald-500 text-white scale-110"
+                            : "bg-gradient-to-br from-violet-600 to-purple-700 text-white hover:scale-110"
                             }`}
                     >
                         {isAddingToCart ? (
@@ -166,9 +170,11 @@ export default function ProductCard({
                 </p>
 
                 {/* Name */}
-                <h3 className="font-bold text-slate-800 dark:text-white mb-3 line-clamp-2 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors leading-snug">
-                    {name}
-                </h3>
+                <a href={productUrl}>
+                    <h3 className="font-bold text-slate-800 dark:text-white mb-3 line-clamp-2 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors leading-snug cursor-pointer">
+                        {name}
+                    </h3>
+                </a>
 
                 {/* Rating - Enhanced */}
                 <div className="flex items-center gap-2 mb-3">
@@ -177,8 +183,8 @@ export default function ProductCard({
                             <Star
                                 key={i}
                                 className={`w-4 h-4 transition-all ${i < Math.floor(rating)
-                                        ? "text-amber-400 fill-amber-400"
-                                        : "text-slate-200 dark:text-slate-700"
+                                    ? "text-amber-400 fill-amber-400"
+                                    : "text-slate-200 dark:text-slate-700"
                                     }`}
                             />
                         ))}
@@ -212,8 +218,8 @@ export default function ProductCard({
                 <button
                     onClick={handleAddToCart}
                     className={`w-full mt-4 btn-primary py-3 text-sm transform transition-all duration-300 ${isHovered
-                            ? "opacity-100 translate-y-0"
-                            : "opacity-0 translate-y-4 pointer-events-none"
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-4 pointer-events-none"
                         } ${isAddingToCart ? "bg-emerald-500 animate-pulse" : ""}`}
                 >
                     {isAddingToCart ? (
