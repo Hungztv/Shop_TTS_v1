@@ -1,32 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, GripVertical, Image, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
-import Modal, { ConfirmModal } from '@/components/admin/Modal';
-import { slidersService, CreateSliderDto } from '@/lib/services/admin/sliders-service';
+import { ConfirmModal } from '@/components/admin/Modal';
+import { slidersService } from '@/lib/services/admin/sliders-service';
 import { Slider } from '@/lib/services/admin/dashboard-service';
 
 export default function SlidersPage() {
+    const router = useRouter();
     const [sliders, setSliders] = useState<Slider[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Modal states
-    const [isFormOpen, setIsFormOpen] = useState(false);
+    // Delete modal state
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [selectedSlider, setSelectedSlider] = useState<Slider | null>(null);
-    const [formLoading, setFormLoading] = useState(false);
-
-    // Form state
-    const [formData, setFormData] = useState<CreateSliderDto>({
-        name: '',
-        title: '',
-        image: '',
-        description: '',
-        link: '',
-        displayOrder: 0,
-        status: 1,
-    });
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     useEffect(() => {
         loadSliders();
@@ -44,62 +34,14 @@ export default function SlidersPage() {
         }
     };
 
-    const openCreateModal = () => {
-        setSelectedSlider(null);
-        setFormData({
-            name: '',
-            title: '',
-            image: '',
-            description: '',
-            link: '',
-            displayOrder: sliders.length,
-            status: 1,
-        });
-        setIsFormOpen(true);
-    };
-
-    const openEditModal = (slider: Slider) => {
-        setSelectedSlider(slider);
-        setFormData({
-            name: slider.name,
-            title: slider.title,
-            image: slider.image,
-            description: slider.description,
-            link: slider.link,
-            displayOrder: slider.displayOrder,
-            status: slider.status,
-        });
-        setIsFormOpen(true);
-    };
-
     const openDeleteModal = (slider: Slider) => {
         setSelectedSlider(slider);
         setIsDeleteOpen(true);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormLoading(true);
-
-        try {
-            if (selectedSlider) {
-                await slidersService.update(selectedSlider.id, formData);
-            } else {
-                await slidersService.create(formData);
-            }
-            setIsFormOpen(false);
-            loadSliders();
-        } catch (error) {
-            console.error('Error saving slider:', error);
-            alert('Có lỗi xảy ra!');
-        } finally {
-            setFormLoading(false);
-        }
-    };
-
     const handleDelete = async () => {
         if (!selectedSlider) return;
-        setFormLoading(true);
+        setDeleteLoading(true);
 
         try {
             await slidersService.delete(selectedSlider.id);
@@ -109,7 +51,7 @@ export default function SlidersPage() {
             console.error('Error deleting slider:', error);
             alert('Có lỗi xảy ra!');
         } finally {
-            setFormLoading(false);
+            setDeleteLoading(false);
         }
     };
 
@@ -147,7 +89,7 @@ export default function SlidersPage() {
                 {/* Toolbar */}
                 <div className="flex justify-end">
                     <button
-                        onClick={openCreateModal}
+                        onClick={() => router.push('/admin/sliders/create')}
                         className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-colors"
                     >
                         <Plus className="w-5 h-5" />
@@ -180,11 +122,12 @@ export default function SlidersPage() {
                         {sliders.map((slider, index) => (
                             <div
                                 key={slider.id}
-                                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 flex gap-4 ${slider.status === 0 ? 'opacity-60' : ''
+                                onClick={() => router.push(`/admin/sliders/${slider.id}/edit`)}
+                                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 flex gap-4 cursor-pointer hover:shadow-md transition-shadow ${slider.status === 0 ? 'opacity-60' : ''
                                     }`}
                             >
                                 {/* Drag Handle & Order Controls */}
-                                <div className="flex flex-col items-center gap-1">
+                                <div className="flex flex-col items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         onClick={() => moveSlider(index, 'up')}
                                         disabled={index === 0}
@@ -230,6 +173,7 @@ export default function SlidersPage() {
                                                     href={slider.link}
                                                     target="_blank"
                                                     rel="noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
                                                     className="inline-flex items-center gap-1 text-sm text-violet-600 hover:underline mt-2"
                                                 >
                                                     <ExternalLink className="w-3 h-3" />
@@ -239,19 +183,19 @@ export default function SlidersPage() {
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                             <button
                                                 onClick={() => toggleStatus(slider)}
                                                 className={`p-2 rounded-lg transition-colors ${slider.status === 1
-                                                        ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                                    ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                                                     }`}
                                                 title={slider.status === 1 ? 'Đang hiển thị' : 'Đang ẩn'}
                                             >
                                                 {slider.status === 1 ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                                             </button>
                                             <button
-                                                onClick={() => openEditModal(slider)}
+                                                onClick={() => router.push(`/admin/sliders/${slider.id}/edit`)}
                                                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-600"
                                             >
                                                 <Pencil className="w-4 h-4" />
@@ -271,83 +215,6 @@ export default function SlidersPage() {
                 )}
             </div>
 
-            {/* Create/Edit Modal */}
-            <Modal
-                isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                title={selectedSlider ? 'Sửa slider' : 'Thêm slider mới'}
-                footer={
-                    <div className="flex justify-end gap-3">
-                        <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">
-                            Hủy
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={formLoading || !formData.name || !formData.image}
-                            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {formLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {selectedSlider ? 'Cập nhật' : 'Tạo mới'}
-                        </button>
-                    </div>
-                }
-            >
-                <form className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Tên slider *</label>
-                        <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Tiêu đề</label>
-                        <input
-                            type="text"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">URL hình ảnh *</label>
-                        <input
-                            type="text"
-                            value={formData.image}
-                            onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
-                            placeholder="https://example.com/image.jpg"
-                            required
-                        />
-                        {formData.image && (
-                            <img src={formData.image} alt="Preview" className="mt-2 h-32 rounded-lg object-cover" />
-                        )}
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Link điều hướng</label>
-                        <input
-                            type="text"
-                            value={formData.link}
-                            onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
-                            placeholder="https://example.com/products"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Mô tả</label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 resize-none"
-                            rows={2}
-                        />
-                    </div>
-                </form>
-            </Modal>
-
             {/* Delete Modal */}
             <ConfirmModal
                 isOpen={isDeleteOpen}
@@ -356,7 +223,7 @@ export default function SlidersPage() {
                 title="Xóa slider"
                 message={`Bạn có chắc chắn muốn xóa slider "${selectedSlider?.name}"?`}
                 confirmText="Xóa"
-                loading={formLoading}
+                loading={deleteLoading}
             />
         </div>
     );

@@ -55,6 +55,15 @@ export const uploadService = {
         return res.data;
     },
 
+    async uploadSlider(file: File): Promise<UploadResult> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await api.post<UploadResult>('/Upload/slider', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return res.data;
+    },
+
     async uploadMultiple(files: File[], bucket: string = 'products', folder?: string): Promise<MultiUploadResult> {
         const formData = new FormData();
         files.forEach((file) => formData.append('files', file));

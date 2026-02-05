@@ -1,31 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, Search, FolderTree } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import DataTable from '@/components/admin/DataTable';
-import Modal, { ConfirmModal } from '@/components/admin/Modal';
-import { categoriesService, CreateCategoryDto, UpdateCategoryDto } from '@/lib/services/admin/categories-service';
+import { ConfirmModal } from '@/components/admin/Modal';
+import { categoriesService } from '@/lib/services/admin/categories-service';
 import { Category } from '@/lib/services/admin/dashboard-service';
 
 export default function CategoriesPage() {
+    const router = useRouter();
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Modal states
-    const [isFormOpen, setIsFormOpen] = useState(false);
+    // Delete modal state
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-    const [formLoading, setFormLoading] = useState(false);
-
-    // Form state
-    const [formData, setFormData] = useState<CreateCategoryDto>({
-        name: '',
-        description: '',
-        slug: '',
-        status: 'Active',
-    });
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     useEffect(() => {
         loadCategories();
@@ -43,62 +36,14 @@ export default function CategoriesPage() {
         }
     };
 
-    const generateSlug = (name: string) => {
-        return name
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/đ/g, 'd')
-            .replace(/[^a-z0-9\s-]/g, '')
-            .trim()
-            .replace(/\s+/g, '-');
-    };
-
-    const openCreateModal = () => {
-        setSelectedCategory(null);
-        setFormData({ name: '', description: '', slug: '', status: 'Active' });
-        setIsFormOpen(true);
-    };
-
-    const openEditModal = (category: Category) => {
-        setSelectedCategory(category);
-        setFormData({
-            name: category.name,
-            description: category.description,
-            slug: category.slug,
-            status: category.status,
-        });
-        setIsFormOpen(true);
-    };
-
     const openDeleteModal = (category: Category) => {
         setSelectedCategory(category);
         setIsDeleteOpen(true);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormLoading(true);
-
-        try {
-            if (selectedCategory) {
-                await categoriesService.update(selectedCategory.id, formData);
-            } else {
-                await categoriesService.create(formData);
-            }
-            setIsFormOpen(false);
-            loadCategories();
-        } catch (error) {
-            console.error('Error saving category:', error);
-            alert('Có lỗi xảy ra!');
-        } finally {
-            setFormLoading(false);
-        }
-    };
-
     const handleDelete = async () => {
         if (!selectedCategory) return;
-        setFormLoading(true);
+        setDeleteLoading(true);
 
         try {
             await categoriesService.delete(selectedCategory.id);
@@ -108,7 +53,7 @@ export default function CategoriesPage() {
             console.error('Error deleting category:', error);
             alert('Có lỗi xảy ra!');
         } finally {
-            setFormLoading(false);
+            setDeleteLoading(false);
         }
     };
 
@@ -173,7 +118,7 @@ export default function CategoriesPage() {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            openEditModal(item);
+                            router.push(`/admin/categories/${item.id}/edit`);
                         }}
                         className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-600"
                         title="Sửa"
@@ -213,7 +158,7 @@ export default function CategoriesPage() {
                         />
                     </div>
                     <button
-                        onClick={openCreateModal}
+                        onClick={() => router.push('/admin/categories/create')}
                         className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-colors"
                     >
                         <Plus className="w-5 h-5" />
@@ -228,96 +173,9 @@ export default function CategoriesPage() {
                     loading={loading}
                     keyExtractor={(item) => item.id}
                     emptyMessage="Chưa có danh mục nào"
+                    onRowClick={(item) => router.push(`/admin/categories/${item.id}/edit`)}
                 />
             </div>
-
-            {/* Create/Edit Modal */}
-            <Modal
-                isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                title={selectedCategory ? 'Sửa danh mục' : 'Thêm danh mục mới'}
-                footer={
-                    <div className="flex justify-end gap-3">
-                        <button
-                            onClick={() => setIsFormOpen(false)}
-                            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl"
-                        >
-                            Hủy
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={formLoading || !formData.name}
-                            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {formLoading && (
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            )}
-                            {selectedCategory ? 'Cập nhật' : 'Tạo mới'}
-                        </button>
-                    </div>
-                }
-            >
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Tên danh mục <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => {
-                                const name = e.target.value;
-                                setFormData({
-                                    ...formData,
-                                    name,
-                                    slug: generateSlug(name)
-                                });
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500 outline-none"
-                            placeholder="Nhập tên danh mục"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Slug <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.slug}
-                            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500 outline-none"
-                            placeholder="slug-danh-muc"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Mô tả
-                        </label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500 outline-none resize-none"
-                            rows={3}
-                            placeholder="Nhập mô tả"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Trạng thái
-                        </label>
-                        <select
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500 outline-none"
-                        >
-                            <option value="Active">Hoạt động</option>
-                            <option value="Inactive">Tạm ẩn</option>
-                        </select>
-                    </div>
-                </form>
-            </Modal>
 
             {/* Delete Modal */}
             <ConfirmModal
@@ -327,7 +185,7 @@ export default function CategoriesPage() {
                 title="Xóa danh mục"
                 message={`Bạn có chắc chắn muốn xóa danh mục "${selectedCategory?.name}"? Hành động này không thể hoàn tác.`}
                 confirmText="Xóa"
-                loading={formLoading}
+                loading={deleteLoading}
             />
         </div>
     );

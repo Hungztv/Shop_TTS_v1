@@ -7,7 +7,7 @@ import { uploadService, UploadResult } from '@/lib/services/admin/upload-service
 interface ImageUploadProps {
     value?: string;
     onChange: (url: string) => void;
-    type: 'product' | 'category' | 'brand' | 'avatar';
+    type: 'product' | 'category' | 'brand' | 'avatar' | 'slider';
     className?: string;
     placeholder?: string;
 }
@@ -56,6 +56,9 @@ export default function ImageUpload({
                     break;
                 case 'avatar':
                     result = await uploadService.uploadAvatar(file);
+                    break;
+                case 'slider':
+                    result = await uploadService.uploadSlider(file);
                     break;
             }
 
