@@ -34,12 +34,12 @@ export const ordersService = {
     },
 
     async updateStatus(id: number, status: number): Promise<Order> {
-        const res = await api.put<ApiResponse<Order>>(`/Orders/${id}/status`, { status });
+        const res = await api.put<ApiResponse<Order>>(`/Orders/${id}/status`, { orderId: id, newStatus: status });
         return res.data.data;
     },
 
     async cancel(id: number): Promise<boolean> {
-        await api.post(`/Orders/${id}/cancel`);
+        await api.post(`/Orders/${id}/cancel`, { orderId: id });
         return true;
     },
 };
