@@ -19,24 +19,30 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { categoriesService } from "@/lib/services/admin/categories-service";
+import type { Category } from "@/lib/services/admin/dashboard-service";
 
-const categories = [
-  { name: "Điện thoại", icon: "📱", href: "#" },
-  { name: "Laptop", icon: "💻", href: "#" },
-  { name: "Máy tính bảng", icon: "📲", href: "#" },
-  { name: "Phụ kiện", icon: "🎧", href: "#" },
-  { name: "Đồng hồ", icon: "⌚", href: "#" },
-  { name: "Thời trang", icon: "👔", href: "#" },
-];
+const getCategoryHref = (category: Category): string => {
+  const baseSlug = category.slug || category.name;
+  const slug = baseSlug
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+  return `/categories/${slug}`;
+};
 
 export default function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState<boolean>(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState<boolean>(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
   // Auth state
   const { user, isAuthenticated, signOut } = useAuth();
@@ -54,6 +60,36 @@ export default function Header() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Fetch categories from backend
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCategories = async () => {
+      try {
+        setIsCategoriesLoading(true);
+        setCategoriesError(null);
+        const data = await categoriesService.getAll();
+        if (isMounted) {
+          setCategories(data.filter((item) => !item.isDeleted));
+        }
+      } catch (error) {
+        if (isMounted) {
+          setCategoriesError("Khong the tai danh muc");
+        }
+      } finally {
+        if (isMounted) {
+          setIsCategoriesLoading(false);
+        }
+      }
+    };
+
+    fetchCategories();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Click outside handler - đóng tất cả dropdown khi bấm ra ngoài
@@ -316,19 +352,6 @@ export default function Header() {
                 </div>
               )}
             </div>
-
-            {/* Mobile Menu Toggle */}
-            <button
-              className="md:hidden btn-icon"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              <div className="relative w-6 h-6">
-                <Menu className={`absolute inset-0 w-6 h-6 text-slate-600 transition-all duration-300 ${isMenuOpen ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
-                  }`} />
-                <X className={`absolute inset-0 w-6 h-6 text-slate-600 transition-all duration-300 ${isMenuOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
-                  }`} />
-              </div>
-            </button>
           </div>
         </div>
 
@@ -371,22 +394,31 @@ export default function Header() {
                     <p className="font-semibold text-slate-800 dark:text-white text-sm">Tất cả danh mục</p>
                   </div>
                   <nav className="py-1">
-                    {categories.map((cat, idx) => (
-                      <Link
-                        key={cat.name}
-                        href={`/categories/${cat.name.toLowerCase().replace(/\s+/g, "-")}`}
-                        className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all group"
-                        style={{ animationDelay: `${idx * 0.05}s` }}
-                        onClick={() => setIsCategoryOpen(false)}
-                      >
-                        <span className="text-xl group-hover:scale-125 transition-transform duration-300">
-                          {cat.icon}
-                        </span>
-                        <span className="group-hover:font-medium transition-all">
-                          {cat.name}
-                        </span>
-                      </Link>
-                    ))}
+                    {isCategoriesLoading && (
+                      <div className="px-4 py-3 text-sm text-slate-500">Dang tai danh muc...</div>
+                    )}
+                    {!isCategoriesLoading && categories.length === 0 && (
+                      <div className="px-4 py-3 text-sm text-slate-500">
+                        {categoriesError || "Chua co danh muc"}
+                      </div>
+                    )}
+                    {!isCategoriesLoading &&
+                      categories.map((cat, idx) => (
+                        <Link
+                          key={cat.id}
+                          href={getCategoryHref(cat)}
+                          className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all group"
+                          style={{ animationDelay: `${idx * 0.05}s` }}
+                          onClick={() => setIsCategoryOpen(false)}
+                        >
+                          <span className="text-xl group-hover:scale-125 transition-transform duration-300">
+                            📦
+                          </span>
+                          <span className="group-hover:font-medium transition-all">
+                            {cat.name}
+                          </span>
+                        </Link>
+                      ))}
                   </nav>
                 </div>
               )}
@@ -482,16 +514,16 @@ export default function Header() {
               <ul className="space-y-1">
                 {categories.map((cat, idx) => (
                   <li
-                    key={cat.name}
+                    key={cat.id}
                     className="animate-fade-in-left"
                     style={{ animationDelay: `${idx * 0.08}s` }}
                   >
                     <Link
-                      href={`/categories/${cat.name.toLowerCase().replace(/\s+/g, "-")}`}
+                      href={getCategoryHref(cat)}
                       className="flex items-center gap-3 px-4 py-4 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all"
                       onClick={() => setIsMenuOpen(false)}
                     >
-                      <span className="text-2xl">{cat.icon}</span>
+                      <span className="text-2xl">📦</span>
                       <span className="font-medium">{cat.name}</span>
                     </Link>
                   </li>
