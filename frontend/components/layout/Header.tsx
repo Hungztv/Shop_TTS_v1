@@ -33,6 +33,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,6 +55,33 @@ export default function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Click outside handler - đóng tất cả dropdown khi bấm ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-dropdown='user']")) {
+        setIsUserMenuOpen(false);
+      }
+      if (!target.closest("[data-dropdown='category']")) {
+        setIsCategoryOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Toggle category dropdown
+  const toggleCategory = () => {
+    setIsCategoryOpen((prev) => !prev);
+    setIsUserMenuOpen(false); // đóng user menu nếu đang mở
+  };
+
+  // Toggle user menu
+  const toggleUserMenu = () => {
+    setIsUserMenuOpen((prev) => !prev);
+    setIsCategoryOpen(false); // đóng category nếu đang mở
+  };
 
   // Toggle dark mode
   const toggleDarkMode = () => {
@@ -196,9 +224,9 @@ export default function Header() {
             </button>
 
             {/* User Menu */}
-            <div className="relative">
+            <div className="relative" data-dropdown="user">
               <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                onClick={toggleUserMenu}
                 className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all group"
               >
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
@@ -321,31 +349,82 @@ export default function Header() {
       <nav className="border-t border-slate-100 dark:border-slate-800 hidden md:block">
         <div className="max-w-7xl mx-auto px-4">
           <ul className="flex items-center gap-1">
-            <li>
+            {/* Dropdown Danh mục */}
+            <li className="relative" data-dropdown="category">
               <button
-                className="flex items-center gap-2 px-5 py-3.5 text-slate-700 dark:text-slate-200 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-semibold group"
+                onClick={toggleCategory}
+                className={`flex items-center gap-2 px-5 py-3.5 rounded-xl transition-all font-semibold group ${
+                  isCategoryOpen
+                    ? "text-violet-600 bg-violet-50 dark:bg-violet-900/20"
+                    : "text-slate-700 dark:text-slate-200 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20"
+                }`}
               >
-                <Menu className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
+                <Menu className={`w-5 h-5 transition-transform duration-300 ${isCategoryOpen ? "rotate-180" : "group-hover:rotate-180"}`} />
                 Danh mục
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isCategoryOpen ? "rotate-180" : ""}`} />
               </button>
+
+              {/* Category Dropdown Menu */}
+              {isCategoryOpen && (
+                <div className="absolute left-0 top-full mt-1 w-64 glass-card rounded-2xl p-2 animate-fade-in-down shadow-2xl z-50">
+                  <div className="p-3 border-b border-slate-100 dark:border-slate-700">
+                    <p className="font-semibold text-slate-800 dark:text-white text-sm">Tất cả danh mục</p>
+                  </div>
+                  <nav className="py-1">
+                    {categories.map((cat, idx) => (
+                      <Link
+                        key={cat.name}
+                        href={`/categories/${cat.name.toLowerCase().replace(/\s+/g, "-")}`}
+                        className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all group"
+                        style={{ animationDelay: `${idx * 0.05}s` }}
+                        onClick={() => setIsCategoryOpen(false)}
+                      >
+                        <span className="text-xl group-hover:scale-125 transition-transform duration-300">
+                          {cat.icon}
+                        </span>
+                        <span className="group-hover:font-medium transition-all">
+                          {cat.name}
+                        </span>
+                      </Link>
+                    ))}
+                  </nav>
+                </div>
+              )}
             </li>
-            {categories.map((cat, idx) => (
-              <li key={cat.name}>
-                <a
-                  href={cat.href}
-                  className="flex items-center gap-2 px-4 py-3.5 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all group"
-                  style={{ animationDelay: `${idx * 0.05}s` }}
-                >
-                  <span className="text-lg group-hover:scale-125 transition-transform duration-300">
-                    {cat.icon}
-                  </span>
-                  <span className="group-hover:font-medium transition-all">
-                    {cat.name}
-                  </span>
-                </a>
-              </li>
-            ))}
+
+            {/* Quick Nav Links */}
+            <li>
+              <Link
+                href="/"
+                className="flex items-center gap-2 px-4 py-3.5 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-medium"
+              >
+                Trang chủ
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/products"
+                className="flex items-center gap-2 px-4 py-3.5 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-medium"
+              >
+                Sản phẩm
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/deals"
+                className="flex items-center gap-2 px-4 py-3.5 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-medium"
+              >
+                🔥 Khuyến mãi
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/contact"
+                className="flex items-center gap-2 px-4 py-3.5 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-medium"
+              >
+                Liên hệ
+              </Link>
+            </li>
           </ul>
         </div>
       </nav>
@@ -357,23 +436,68 @@ export default function Header() {
       >
         <div className="glass border-t border-slate-100 dark:border-slate-800">
           <nav className="max-w-7xl mx-auto px-4 py-4">
-            <ul className="space-y-1">
-              {categories.map((cat, idx) => (
-                <li
-                  key={cat.name}
-                  className="animate-fade-in-left"
-                  style={{ animationDelay: `${idx * 0.08}s` }}
+            {/* Mobile Navigation Links */}
+            <ul className="space-y-1 mb-3">
+              <li>
+                <Link
+                  href="/"
+                  className="flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-200 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-semibold"
+                  onClick={() => setIsMenuOpen(false)}
                 >
-                  <a
-                    href={cat.href}
-                    className="flex items-center gap-3 px-4 py-4 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all"
-                  >
-                    <span className="text-2xl">{cat.icon}</span>
-                    <span className="font-medium">{cat.name}</span>
-                  </a>
-                </li>
-              ))}
+                  🏠 Trang chủ
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/products"
+                  className="flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-200 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-semibold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  🛍️ Sản phẩm
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/deals"
+                  className="flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-200 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-semibold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  🔥 Khuyến mãi
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-200 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all font-semibold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  📞 Liên hệ
+                </Link>
+              </li>
             </ul>
+
+            {/* Mobile Category Section */}
+            <div className="border-t border-slate-100 dark:border-slate-700 pt-3">
+              <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Danh mục</p>
+              <ul className="space-y-1">
+                {categories.map((cat, idx) => (
+                  <li
+                    key={cat.name}
+                    className="animate-fade-in-left"
+                    style={{ animationDelay: `${idx * 0.08}s` }}
+                  >
+                    <Link
+                      href={`/categories/${cat.name.toLowerCase().replace(/\s+/g, "-")}`}
+                      className="flex items-center gap-3 px-4 py-4 text-slate-600 dark:text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl transition-all"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <span className="text-2xl">{cat.icon}</span>
+                      <span className="font-medium">{cat.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </nav>
         </div>
       </div>
