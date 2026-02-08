@@ -288,14 +288,24 @@ export default function Header() {
 
         {/* Mobile Search */}
         <div className="md:hidden pb-3">
-          <div className="relative">
+          <form onSubmit={handleSearch} className="relative">
             <input
               type="text"
               placeholder="Tìm kiếm sản phẩm..."
-              className="w-full h-10 px-4 pl-10 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-10 px-4 pl-10 pr-10 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
             />
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          </div>
+            {searchQuery && (
+              <button
+                type="submit"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
+              >
+                <Search className="w-3.5 h-3.5 text-violet-500" />
+              </button>
+            )}
+          </form>
         </div>
       </div>
 
