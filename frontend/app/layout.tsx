@@ -5,6 +5,9 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { WishlistProvider } from "@/contexts/WishlistContext";
+import { CompareProvider } from "@/contexts/CompareContext";
+import CompareBar from "@/components/ui/CompareBar";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -36,15 +39,20 @@ export default function RootLayout({
       >
         <AuthProvider>
           <CartProvider>
-            {children}
-            <Toaster
-              position="top-right"
-              richColors
-              closeButton
-              toastOptions={{
-                duration: 3000,
-              }}
-            />
+            <WishlistProvider>
+              <CompareProvider>
+                {children}
+                <CompareBar />
+                <Toaster
+                  position="top-right"
+                  richColors
+                  closeButton
+                  toastOptions={{
+                    duration: 3000,
+                  }}
+                />
+              </CompareProvider>
+            </WishlistProvider>
           </CartProvider>
         </AuthProvider>
       </body>

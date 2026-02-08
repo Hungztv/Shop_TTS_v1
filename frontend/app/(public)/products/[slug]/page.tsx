@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-    Star, Heart, ShoppingCart, Minus, Plus, ChevronLeft, ChevronRight,
-    Truck, Shield, RotateCcw, CheckCircle, Package
+    Star, Minus, Plus, ChevronLeft, ChevronRight,
+    Truck, Shield, RotateCcw, Package, ArrowLeftRight
 } from 'lucide-react';
 import { productsPublicService, Product } from '@/lib/services/public-api';
+import AddToCartButton from '@/components/ui/AddToCartButton';
+import WishlistButton from '@/components/ui/WishlistButton';
+import CompareButton from '@/components/ui/CompareButton';
+import ProductRatings from '@/components/product/ProductRatings';
 
 export default function ProductDetailPage() {
     const params = useParams();
@@ -17,7 +21,6 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
-    const [isWishlisted, setIsWishlisted] = useState(false);
     const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'reviews'>('description');
 
     useEffect(() => {
@@ -249,20 +252,12 @@ export default function ProductDetailPage() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-4">
-                            <button className="flex-1 py-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-semibold text-lg hover:from-violet-700 hover:to-purple-700 transition-all shadow-lg shadow-violet-200 flex items-center justify-center gap-2">
-                                <ShoppingCart className="w-5 h-5" />
-                                Thêm vào giỏ
-                            </button>
-                            <button
-                                onClick={() => setIsWishlisted(!isWishlisted)}
-                                className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all ${isWishlisted
-                                    ? 'bg-pink-500 text-white shadow-lg shadow-pink-200'
-                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                                    }`}
-                            >
-                                <Heart className={`w-6 h-6 ${isWishlisted ? 'fill-current' : ''}`} />
-                            </button>
+                        <div className="flex gap-3">
+                            <div className="flex-1">
+                                <AddToCartButton productId={product.id} quantity={quantity} variant="button" className="!py-4 !text-lg" />
+                            </div>
+                            <WishlistButton productId={product.id} variant="button" />
+                            <CompareButton productId={product.id} variant="button" />
                         </div>
 
                         {/* Trust Badges */}
@@ -338,11 +333,7 @@ export default function ProductDetailPage() {
                         )}
 
                         {activeTab === 'reviews' && (
-                            <div className="text-center py-8">
-                                <div className="text-5xl mb-4">⭐</div>
-                                <h3 className="text-lg font-semibold text-slate-700 mb-2">Chưa có đánh giá nào</h3>
-                                <p className="text-slate-500">Hãy là người đầu tiên đánh giá sản phẩm này</p>
-                            </div>
+                            <ProductRatings productId={product.id} />
                         )}
                     </div>
                 </div>

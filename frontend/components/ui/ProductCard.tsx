@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Heart, Star, Eye, Zap } from "lucide-react";
+import { Star, Zap } from "lucide-react";
 import AddToCartButton from "@/components/ui/AddToCartButton";
+import WishlistButton from "@/components/ui/WishlistButton";
+import CompareButton from "@/components/ui/CompareButton";
 
 interface ProductCardProps {
     id: number;
@@ -30,7 +32,6 @@ export default function ProductCard({
     category,
 }: ProductCardProps) {
     const productUrl = slug ? `/products/${slug}` : `/products/${id}`;
-    const [isWishlisted, setIsWishlisted] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const cardRef = useRef<HTMLDivElement>(null);
     const [tiltStyle, setTiltStyle] = useState({ transform: "" });
@@ -96,22 +97,8 @@ export default function ProductCard({
                 </div>
             )}
 
-            {/* Wishlist Button - Enhanced */}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setIsWishlisted(!isWishlisted);
-                }}
-                className={`absolute top-3 right-3 z-10 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${isWishlisted
-                    ? "bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30"
-                    : "glass hover:bg-white"
-                    }`}
-            >
-                <Heart
-                    className={`w-5 h-5 transition-transform ${isWishlisted ? "fill-current scale-110" : "text-slate-500"
-                        }`}
-                />
-            </button>
+            {/* Wishlist Button */}
+            <WishlistButton productId={id} variant="icon" className="absolute top-3 right-3 z-10" />
 
             {/* Image Container */}
             <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900">
@@ -130,9 +117,7 @@ export default function ProductCard({
                     className={`absolute inset-0 z-[2] bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-end justify-center pb-6 gap-3 transition-all duration-400 ${isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                         }`}
                 >
-                    <button className="w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm text-violet-600 flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-xl">
-                        <Eye className="w-5 h-5" />
-                    </button>
+                    <CompareButton productId={id} variant="icon" />
                     <AddToCartButton productId={id} variant="icon" />
                 </div>
 

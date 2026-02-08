@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
+import { useCompare } from "@/contexts/CompareContext";
 import { categoriesService } from "@/lib/services/admin/categories-service";
 import type { Category } from "@/lib/services/admin/dashboard-service";
 
@@ -34,6 +36,8 @@ export default function Header() {
 
   const { user, isAuthenticated, signOut } = useAuth();
   const { cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
+  const { compareCount } = useCompare();
 
   const handleSignOut = async () => {
     await signOut();
@@ -170,9 +174,13 @@ export default function Header() {
             </button>
 
             {/* Wishlist */}
-            <Link href="/wishlist" className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <Link href="/account/wishlist" className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <Heart className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-pink-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">3</span>
+              {wishlistCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-pink-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
             </Link>
 
             {/* Cart */}
