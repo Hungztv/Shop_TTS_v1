@@ -17,6 +17,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { categoriesService } from "@/lib/services/admin/categories-service";
 import type { Category } from "@/lib/services/admin/dashboard-service";
 
@@ -32,6 +33,7 @@ export default function Header() {
   const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(true);
 
   const { user, isAuthenticated, signOut } = useAuth();
+  const { cartCount } = useCart();
 
   const handleSignOut = async () => {
     await signOut();
@@ -176,7 +178,11 @@ export default function Header() {
             {/* Cart */}
             <Link href="/cart" className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <ShoppingCart className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-violet-600 text-white text-[10px] rounded-full flex items-center justify-center font-medium">5</span>
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-violet-600 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
             </Link>
 
             {/* User Menu */}

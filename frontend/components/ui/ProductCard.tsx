@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Heart, ShoppingCart, Star, Eye, Zap } from "lucide-react";
+import { Heart, Star, Eye, Zap } from "lucide-react";
+import AddToCartButton from "@/components/ui/AddToCartButton";
 
 interface ProductCardProps {
     id: number;
@@ -31,7 +32,6 @@ export default function ProductCard({
     const productUrl = slug ? `/products/${slug}` : `/products/${id}`;
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-    const [isAddingToCart, setIsAddingToCart] = useState(false);
     const cardRef = useRef<HTMLDivElement>(null);
     const [tiltStyle, setTiltStyle] = useState({ transform: "" });
 
@@ -65,11 +65,6 @@ export default function ProductCard({
     const handleMouseLeave = () => {
         setIsHovered(false);
         setTiltStyle({ transform: "" });
-    };
-
-    const handleAddToCart = () => {
-        setIsAddingToCart(true);
-        setTimeout(() => setIsAddingToCart(false), 1000);
     };
 
     return (
@@ -138,19 +133,7 @@ export default function ProductCard({
                     <button className="w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm text-violet-600 flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-xl">
                         <Eye className="w-5 h-5" />
                     </button>
-                    <button
-                        onClick={handleAddToCart}
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shadow-xl ${isAddingToCart
-                            ? "bg-emerald-500 text-white scale-110"
-                            : "bg-gradient-to-br from-violet-600 to-purple-700 text-white hover:scale-110"
-                            }`}
-                    >
-                        {isAddingToCart ? (
-                            <span className="text-lg">✓</span>
-                        ) : (
-                            <ShoppingCart className="w-5 h-5" />
-                        )}
-                    </button>
+                    <AddToCartButton productId={id} variant="icon" />
                 </div>
 
                 {/* Shimmer effect on hover */}
@@ -214,26 +197,15 @@ export default function ProductCard({
                     )}
                 </div>
 
-                {/* Add to Cart Button - Enhanced */}
-                <button
-                    onClick={handleAddToCart}
-                    className={`w-full mt-4 btn-primary py-3 text-sm transform transition-all duration-300 ${isHovered
+                {/* Add to Cart Button */}
+                <div
+                    className={`mt-4 transform transition-all duration-300 ${isHovered
                         ? "opacity-100 translate-y-0"
                         : "opacity-0 translate-y-4 pointer-events-none"
-                        } ${isAddingToCart ? "bg-emerald-500 animate-pulse" : ""}`}
+                        }`}
                 >
-                    {isAddingToCart ? (
-                        <>
-                            <span className="text-lg">✓</span>
-                            Đã thêm!
-                        </>
-                    ) : (
-                        <>
-                            <ShoppingCart className="w-4 h-4" />
-                            Thêm vào giỏ
-                        </>
-                    )}
-                </button>
+                    <AddToCartButton productId={id} variant="button" />
+                </div>
             </div>
 
             {/* Card glow effect */}
