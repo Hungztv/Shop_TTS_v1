@@ -35,7 +35,7 @@ public class GetUserCompareQueryHandler : IRequestHandler<GetUserCompareQuery, C
 
         foreach (var item in compareItems)
         {
-            var product = await _unitOfWork.Products.GetByIdAsync(item.ProductId);
+            var product = await _unitOfWork.ProductRepository.GetWithDetailsAsync(item.ProductId);
 
             // Skip if product is deleted
             if (product == null || product.IsDeleted)

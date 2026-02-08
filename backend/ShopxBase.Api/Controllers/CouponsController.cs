@@ -4,6 +4,7 @@ using ShopxBase.Application.Features.Coupons.Commands.CreateCoupon;
 using ShopxBase.Application.Features.Coupons.Commands.UpdateCoupon;
 using ShopxBase.Application.Features.Coupons.Commands.DeleteCoupon;
 using ShopxBase.Application.Features.Coupons.Queries.GetCoupons;
+using ShopxBase.Application.Features.Coupons.Queries.GetCouponById;
 using ShopxBase.Application.Features.Coupons.Queries.GetCouponByCode;
 using ShopxBase.Application.Features.Coupons.Queries.ValidateCoupon;
 
@@ -18,6 +19,17 @@ public class CouponsController : BaseApiController
     public async Task<IActionResult> GetCoupons([FromQuery] GetCouponsQuery query)
     {
         var result = await Mediator.Send(query);
+        return Success(result);
+    }
+
+
+    [HttpGet("{id:int}")]
+    [Authorize(Roles = "Admin,Seller")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await Mediator.Send(new GetCouponByIdQuery { Id = id });
+        if (result == null)
+            return NotFound("Không tìm thấy mã giảm giá");
         return Success(result);
     }
 
@@ -65,7 +77,9 @@ public class CouponsController : BaseApiController
     [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> Delete(int id)
     {
-        await Mediator.Send(new DeleteCouponCommand { Id = id });
+        var result = await Mediator.Send(new DeleteCouponCommand { Id = id });
+        if (!result.Success)
+            return BadRequest(result.ErrorMessage);
         return Success(true, "Xóa mã giảm giá thành công");
     }
 }

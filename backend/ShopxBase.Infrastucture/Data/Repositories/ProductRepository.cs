@@ -109,5 +109,14 @@ namespace ShopxBase.Infrastructure.Data.Repositories
         {
             return await _dbSet.AnyAsync(p => p.Slug == slug && !p.IsDeleted);
         }
+
+        public async Task<Product> GetWithDetailsAsync(int id)
+        {
+            return await _dbSet
+                .Include(p => p.Brand)
+                .Include(p => p.Category)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+        }
     }
 }

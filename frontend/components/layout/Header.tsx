@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   ShoppingCart,
@@ -34,6 +35,7 @@ export default function Header() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(true);
 
+  const router = useRouter();
   const { user, isAuthenticated, signOut } = useAuth();
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
@@ -42,6 +44,15 @@ export default function Header() {
   const handleSignOut = async () => {
     await signOut();
     setIsUserMenuOpen(false);
+  };
+
+  const handleSearch = (e: React.FormEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setIsSearchFocused(false);
+    }
   };
 
   useEffect(() => {
@@ -106,18 +117,26 @@ export default function Header() {
 
           {/* Search Bar - Compact */}
           <div className="flex-1 max-w-xl hidden md:block">
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
                 placeholder="Tìm kiếm sản phẩm..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 px-4 pl-10 rounded-full border border-slate-200 dark:border-slate-700 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all bg-slate-50 dark:bg-slate-800 text-sm"
+                className="w-full h-10 px-4 pl-10 pr-10 rounded-full border border-slate-200 dark:border-slate-700 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all bg-slate-50 dark:bg-slate-800 text-sm"
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
               />
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            </div>
+              {searchQuery && (
+                <button
+                  type="submit"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
+                >
+                  <Search className="w-3.5 h-3.5 text-violet-500" />
+                </button>
+              )}
+            </form>
           </div>
 
           {/* Navigation Links - Inline */}
@@ -214,8 +233,8 @@ export default function Header() {
                       </div>
                       {[
                         { icon: User, label: "Tài khoản", href: "/account" },
-                        { icon: Package, label: "Đơn hàng", href: "/orders" },
-                        { icon: Settings, label: "Cài đặt", href: "/settings" },
+                        { icon: Package, label: "Đơn hàng", href: "/account/orders" },
+                        { icon: Settings, label: "Cài đặt", href: "/account/settings" },
                       ].map((item, idx) => (
                         <Link
                           key={idx}
