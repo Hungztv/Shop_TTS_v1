@@ -15,7 +15,7 @@ namespace ShopxBase.Infrastructure.Data.Configurations
 
             // 2. Cấu hình các thuộc tính (Properties)
             builder.Property(e => e.Name)
-                .IsRequired()           
+                .IsRequired()
                 .HasMaxLength(200);
 
             builder.Property(e => e.Slug)
@@ -23,10 +23,13 @@ namespace ShopxBase.Infrastructure.Data.Configurations
 
             builder.Property(e => e.Price)
                 .IsRequired()
-                .HasColumnType("decimal(18,2)"); 
+                .HasColumnType("decimal(18,2)");
 
             builder.Property(e => e.CapitalPrice)
                 .HasColumnType("decimal(18,2)");
+
+            builder.Property(e => e.ShopId)
+                .IsRequired();
 
             // 3. Cấu hình Mối quan hệ (Relationships)
 
@@ -42,6 +45,13 @@ namespace ShopxBase.Infrastructure.Data.Configurations
             builder.HasOne(e => e.Category)
                 .WithMany(c => c.Products)
                 .HasForeignKey(e => e.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relation: Product -> Shop (1-N)
+
+            builder.HasOne(e => e.Shop)
+                .WithMany(s => s.Products)
+                .HasForeignKey(e => e.ShopId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Relation: Product -> Ratings (1-N)

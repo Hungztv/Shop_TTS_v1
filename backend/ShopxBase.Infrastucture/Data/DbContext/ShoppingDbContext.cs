@@ -26,6 +26,9 @@ namespace ShopxBase.Infrastructure.Data
         public DbSet<Shipping> Shippings { get; set; }
         public DbSet<Cart> Carts { get; set; }
         public DbSet<ContactMessage> ContactMessages { get; set; }
+        public DbSet<BusinessRegistration> BusinessRegistrations { get; set; }
+        public DbSet<Shop> Shops { get; set; }
+        public DbSet<ShopMember> ShopMembers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

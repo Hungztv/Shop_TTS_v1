@@ -8,12 +8,18 @@ import Sidebar from '@/components/admin/Sidebar';
 export default function AdminLayout({ children }: { children: ReactNode }) {
     const { user, isAuthenticated, isLoading } = useAuth();
     const router = useRouter();
+    const isAdmin = user?.roles?.some(role => role.toLowerCase() === 'admin') ?? false;
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
             router.push('/login');
+            return;
         }
-    }, [isLoading, isAuthenticated, router]);
+
+        if (!isLoading && isAuthenticated && !isAdmin) {
+            router.push('/');
+        }
+    }, [isLoading, isAuthenticated, isAdmin, router]);
 
     if (isLoading) {
         return (
@@ -27,6 +33,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
 
     if (!isAuthenticated) {
+        return null;
+    }
+
+    if (!isAdmin) {
         return null;
     }
 

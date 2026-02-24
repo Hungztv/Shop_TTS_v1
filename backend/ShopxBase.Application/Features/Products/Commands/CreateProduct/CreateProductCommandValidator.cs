@@ -40,5 +40,8 @@ public class CreateProductCommandValidator : AbstractValidator<CreateProductComm
 
         RuleFor(x => x.CategoryId)
             .GreaterThan(0).WithMessage("CategoryId phải lớn hơn 0");
+
+        RuleFor(x => x.ShopId)
+            .GreaterThan(0).WithMessage("ShopId phải lớn hơn 0");
     }
 }

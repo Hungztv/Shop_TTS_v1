@@ -4,11 +4,13 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Package, Settings, LogOut, ChevronRight } from 'lucide-react';
+import { User, Package, Settings, LogOut, ChevronRight, Store } from 'lucide-react';
 
 const menuItems = [
     { href: '/account', label: 'Tài khoản', icon: User, exact: true },
     { href: '/account/orders', label: 'Đơn hàng', icon: Package },
+    { href: '/account/shop-registration', label: 'Đăng ký bán hàng', icon: Store },
+    { href: '/account/shop', label: 'Shop của tôi', icon: Store },
     { href: '/account/settings', label: 'Cài đặt', icon: Settings },
 ];
 

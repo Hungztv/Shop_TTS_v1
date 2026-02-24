@@ -14,4 +14,5 @@ public class CreateProductCommand : IRequest<ProductDto>
     public string Image { get; set; }
     public int BrandId { get; set; }
     public int CategoryId { get; set; }
+    public int ShopId { get; set; }
 }

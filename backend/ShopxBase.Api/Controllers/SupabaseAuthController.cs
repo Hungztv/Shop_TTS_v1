@@ -4,6 +4,7 @@ using ShopxBase.Application.DTOs.Auth;
 using ShopxBase.Application.Interfaces;
 using ShopxBase.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace ShopxBase.Api.Controllers;
 
@@ -18,15 +19,18 @@ public class SupabaseAuthController : ControllerBase
     private readonly ISupabaseAuthService _authService;
     private readonly ILogger<SupabaseAuthController> _logger;
     private readonly UserManager<AppUser> _userManager;
+    private readonly IJwtTokenService _jwtTokenService;
 
     public SupabaseAuthController(
         ISupabaseAuthService authService,
         ILogger<SupabaseAuthController> logger,
-        UserManager<AppUser> userManager)
+        UserManager<AppUser> userManager,
+        IJwtTokenService jwtTokenService)
     {
         _authService = authService;
         _logger = logger;
         _userManager = userManager;
+        _jwtTokenService = jwtTokenService;
     }
 
     /// <summary>
@@ -117,15 +121,21 @@ public class SupabaseAuthController : ControllerBase
 
         if (result.Success)
         {
+            var appRoles = await ResolveAppRolesAsync(result.User);
+            var appAccessToken = await CreateAppAccessTokenAsync(result.User, appRoles);
+
             return Ok(new
             {
                 success = true,
                 message = result.Message,
-                accessToken = result.AccessToken,
+                accessToken = appAccessToken ?? result.AccessToken,
+                supabaseAccessToken = result.AccessToken,
+                appAccessToken,
                 refreshToken = result.RefreshToken,
                 expiresIn = result.ExpiresIn,
                 tokenType = result.TokenType,
-                user = result.User
+                user = result.User,
+                appRoles
             });
         }
 
@@ -153,14 +163,20 @@ public class SupabaseAuthController : ControllerBase
 
         if (result.Success)
         {
+            var appRoles = await ResolveAppRolesAsync(result.User);
+            var appAccessToken = await CreateAppAccessTokenAsync(result.User, appRoles);
+
             return Ok(new
             {
                 success = true,
                 message = result.Message,
-                accessToken = result.AccessToken,
+                accessToken = appAccessToken ?? result.AccessToken,
+                supabaseAccessToken = result.AccessToken,
+                appAccessToken,
                 refreshToken = result.RefreshToken,
                 expiresIn = result.ExpiresIn,
-                user = result.User
+                user = result.User,
+                appRoles
             });
         }
 
@@ -399,5 +415,64 @@ public class SupabaseAuthController : ControllerBase
             return null;
         }
         return authHeader.Substring(7);
+    }
+
+    private async Task<List<string>> ResolveAppRolesAsync(SupabaseUser? supabaseUser)
+    {
+        try
+        {
+            if (supabaseUser == null)
+                return new List<string>();
+
+            AppUser? appUser = null;
+
+            if (!string.IsNullOrWhiteSpace(supabaseUser.Id))
+            {
+                appUser = await _userManager.FindByIdAsync(supabaseUser.Id);
+            }
+
+            if (appUser == null && !string.IsNullOrWhiteSpace(supabaseUser.Email))
+            {
+                appUser = await _userManager.FindByEmailAsync(supabaseUser.Email);
+            }
+
+            if (appUser == null)
+                return new List<string>();
+
+            var roles = await _userManager.GetRolesAsync(appUser);
+            return roles.ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Không thể resolve app roles cho user SupabaseId={SupabaseId}, Email={Email}", supabaseUser?.Id, supabaseUser?.Email);
+            return new List<string>();
+        }
+    }
+
+    private async Task<string?> CreateAppAccessTokenAsync(SupabaseUser? supabaseUser, List<string> appRoles)
+    {
+        try
+        {
+            if (supabaseUser == null)
+                return null;
+
+            AppUser? appUser = null;
+
+            if (!string.IsNullOrWhiteSpace(supabaseUser.Id))
+                appUser = await _userManager.FindByIdAsync(supabaseUser.Id);
+
+            if (appUser == null && !string.IsNullOrWhiteSpace(supabaseUser.Email))
+                appUser = await _userManager.FindByEmailAsync(supabaseUser.Email);
+
+            if (appUser == null)
+                return null;
+
+            return await _jwtTokenService.GenerateAccessTokenAsync(appUser, appRoles);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Không thể tạo app access token cho user SupabaseId={SupabaseId}, Email={Email}", supabaseUser?.Id, supabaseUser?.Email);
+            return null;
+        }
     }
 }

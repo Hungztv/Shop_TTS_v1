@@ -110,3 +110,14 @@ export async function updatePassword(newPassword: string, accessToken: string): 
         };
     }
 }
+
+export async function getMeWithRoles(accessToken: string): Promise<{ success: boolean; user?: User }> {
+    try {
+        const response = await axios.get(`${API_URL}/SupabaseAuth/me/with-roles`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        return response.data;
+    } catch (error: any) {
+        return { success: false };
+    }
+}

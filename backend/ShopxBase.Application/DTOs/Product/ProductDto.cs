@@ -19,6 +19,8 @@ public class ProductDto
     public string BrandName { get; set; }
     public int CategoryId { get; set; }
     public string CategoryName { get; set; }
+    public int ShopId { get; set; }
+    public string? ShopName { get; set; }
     public decimal AverageRating { get; set; }
     public int TotalReviews { get; set; }
     public bool IsInStock { get; set; }
@@ -62,6 +64,9 @@ public class CreateProductDto
 
     [Required(ErrorMessage = "Danh mục là bắt buộc")]
     public int CategoryId { get; set; }
+
+    [Required(ErrorMessage = "ShopId là bắt buộc")]
+    public int ShopId { get; set; }
 }
 
 /// <summary>
@@ -103,4 +108,7 @@ public class UpdateProductDto
 
     [Required(ErrorMessage = "Danh mục là bắt buộc")]
     public int CategoryId { get; set; }
+
+    [Required(ErrorMessage = "ShopId là bắt buộc")]
+    public int ShopId { get; set; }
 }

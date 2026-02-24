@@ -19,8 +19,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const initAuth = async () => {
             const accessToken = Cookies.get('accessToken');
-            if (accessToken) {
-                const result = await authService.getMe(accessToken);
+            const supabaseAccessToken = Cookies.get('supabaseAccessToken') || accessToken;
+
+            if (accessToken && supabaseAccessToken) {
+                const result = await authService.getMeWithRoles(supabaseAccessToken);
                 if (result.success && result.user) {
                     setUser(result.user);
                 } else {
@@ -30,17 +32,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const refreshResult = await authService.refreshToken(refreshTokenValue);
                         if (refreshResult.success && refreshResult.accessToken) {
                             Cookies.set('accessToken', refreshResult.accessToken, { expires: 1 });
+                            if (refreshResult.supabaseAccessToken) {
+                                Cookies.set('supabaseAccessToken', refreshResult.supabaseAccessToken, { expires: 1 });
+                            }
                             if (refreshResult.refreshToken) {
                                 Cookies.set('refreshToken', refreshResult.refreshToken, { expires: 7 });
                             }
                             // Retry get user
-                            const retryResult = await authService.getMe(refreshResult.accessToken);
+                            const retrySupabaseToken = refreshResult.supabaseAccessToken || refreshResult.accessToken;
+                            const retryResult = await authService.getMeWithRoles(retrySupabaseToken);
                             if (retryResult.success && retryResult.user) {
                                 setUser(retryResult.user);
                             }
                         } else {
                             // Clear cookies
                             Cookies.remove('accessToken');
+                            Cookies.remove('supabaseAccessToken');
                             Cookies.remove('refreshToken');
                         }
                     }
@@ -56,10 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (result.success && result.accessToken) {
             Cookies.set('accessToken', result.accessToken, { expires: 1 }); // 1 ngày
+            if (result.supabaseAccessToken) {
+                Cookies.set('supabaseAccessToken', result.supabaseAccessToken, { expires: 1 });
+            }
             if (result.refreshToken) {
                 Cookies.set('refreshToken', result.refreshToken, { expires: 7 }); // 7 ngày
             }
             if (result.user) {
+                if (result.appRoles?.length) {
+                    result.user.roles = result.appRoles;
+                }
                 setUser(result.user);
             }
         }
@@ -72,10 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (result.success && result.accessToken) {
             Cookies.set('accessToken', result.accessToken, { expires: 1 });
+            if (result.supabaseAccessToken) {
+                Cookies.set('supabaseAccessToken', result.supabaseAccessToken, { expires: 1 });
+            }
             if (result.refreshToken) {
                 Cookies.set('refreshToken', result.refreshToken, { expires: 7 });
             }
             if (result.user) {
+                if (result.appRoles?.length) {
+                    result.user.roles = result.appRoles;
+                }
                 setUser(result.user);
             }
         }
@@ -84,11 +103,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     // Đăng xuất
     const signOut = async () => {
-        const accessToken = Cookies.get('accessToken');
-        if (accessToken) {
-            await authService.signOut(accessToken);
+        const supabaseAccessToken = Cookies.get('supabaseAccessToken') || Cookies.get('accessToken');
+        if (supabaseAccessToken) {
+            await authService.signOut(supabaseAccessToken);
         }
         Cookies.remove('accessToken');
+        Cookies.remove('supabaseAccessToken');
         Cookies.remove('refreshToken');
         setUser(null);
     };

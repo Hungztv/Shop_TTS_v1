@@ -4,6 +4,7 @@ using ShopxBase.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Security.Claims;
 using DotNetEnv;
 using Npgsql;
 using ShopxBase.Domain.Entities;
@@ -11,9 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using ShopxBase.Application.Interfaces;
 using ShopxBase.Infrastructure.Services;
 using ShopxBase.Application.Settings;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi.Models;
 
 // 1. Load environment variables from .env file
@@ -63,10 +62,10 @@ var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "ShopxBa
 var jwtExpiryMinutes = Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") ?? "60";
 
 // Add JWT settings to Configuration
-builder.Configuration["JwtSettings:Secret"] = jwtSecret;
+builder.Configuration["JwtSettings:SecretKey"] = jwtSecret;
 builder.Configuration["JwtSettings:Issuer"] = jwtIssuer;
 builder.Configuration["JwtSettings:Audience"] = jwtAudience;
-builder.Configuration["JwtSettings:ExpiryMinutes"] = jwtExpiryMinutes;
+builder.Configuration["JwtSettings:AccessTokenExpirationMinutes"] = jwtExpiryMinutes;
 
 // Add connection string to configuration for Infrastructure layer
 builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
@@ -115,13 +114,46 @@ var secretKey = jwtSettings?.SecretKey
 // 6. Configure JWT Authentication with Supabase JWT support (ES256 via JWKS)
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = "DynamicBearer";
+    options.DefaultChallengeScheme = "DynamicBearer";
 })
-.AddJwtBearer(options =>
+.AddPolicyScheme("DynamicBearer", "Dynamic JWT Bearer", options =>
+{
+    options.ForwardDefaultSelector = context =>
+    {
+        var authHeader = context.Request.Headers.Authorization.ToString();
+        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            return "SupabaseBearer";
+
+        var token = authHeader.Substring("Bearer ".Length).Trim();
+        var segments = token.Split('.');
+        if (segments.Length != 3)
+            return "SupabaseBearer";
+
+        try
+        {
+            var payload = segments[1]
+                .Replace('-', '+')
+                .Replace('_', '/');
+
+            while (payload.Length % 4 != 0)
+                payload += "=";
+
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            return json.Contains($"\"iss\":\"{supabaseUrl}/auth/v1\"", StringComparison.OrdinalIgnoreCase)
+                ? "SupabaseBearer"
+                : "AppBearer";
+        }
+        catch
+        {
+            return "SupabaseBearer";
+        }
+    };
+})
+.AddJwtBearer("SupabaseBearer", options =>
 {
     options.Authority = $"{supabaseUrl}/auth/v1";
-    options.RequireHttpsMetadata = false; // Dev only - set true in production
+    options.RequireHttpsMetadata = false;
     options.SaveToken = true;
 
     options.TokenValidationParameters = new TokenValidationParameters
@@ -130,41 +162,30 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        // Supabase issuer
         ValidIssuer = $"{supabaseUrl}/auth/v1",
-        // Supabase audience
         ValidAudience = "authenticated",
         ClockSkew = TimeSpan.Zero,
-        // Map Supabase claims to standard claims
         RoleClaimType = "role",
         NameClaimType = "email"
     };
+})
+.AddJwtBearer("AppBearer", options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
 
-    options.Events = new JwtBearerEvents
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        OnAuthenticationFailed = context =>
-        {
-            Console.WriteLine($"❌ JWT Authentication failed: {context.Exception.GetType().Name}");
-            Console.WriteLine($"   Message: {context.Exception.Message}");
-            if (context.Exception.InnerException != null)
-            {
-                Console.WriteLine($"   Inner: {context.Exception.InnerException.Message}");
-            }
-            return Task.CompletedTask;
-        },
-        OnTokenValidated = context =>
-        {
-            var userId = context.Principal?.FindFirst("sub")?.Value;
-            var email = context.Principal?.FindFirst("email")?.Value;
-            var role = context.Principal?.FindFirst("role")?.Value;
-            Console.WriteLine($"✅ JWT Token validated - User: {userId}, Email: {email}, Role: {role}");
-            return Task.CompletedTask;
-        },
-        OnChallenge = context =>
-        {
-            Console.WriteLine($"⚠️ JWT Challenge: {context.Error}, {context.ErrorDescription}");
-            return Task.CompletedTask;
-        }
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+        ClockSkew = TimeSpan.Zero,
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = ClaimTypes.Email
     };
 });
 
@@ -239,7 +260,7 @@ builder.Services.AddCors(options =>
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod();
-                // .AllowCredentials(); // Bật dòng này nếu bạn dùng Cookie, nếu chỉ dùng JWT Header thì không cần
+            // .AllowCredentials(); // Bật dòng này nếu bạn dùng Cookie, nếu chỉ dùng JWT Header thì không cần
         });
 });
 

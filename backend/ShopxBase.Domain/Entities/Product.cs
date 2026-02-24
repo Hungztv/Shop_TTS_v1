@@ -30,10 +30,12 @@ public class Product : BaseEntity
     // Foreign Keys
     public int BrandId { get; set; }
     public int CategoryId { get; set; }
+    public int ShopId { get; set; }
 
     // Navigation Properties
     public virtual Brand Brand { get; set; }
     public virtual Category Category { get; set; }
+    public virtual Shop Shop { get; set; }
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
     public virtual ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();

@@ -7,6 +7,7 @@ export interface User {
     emailConfirmed?: boolean;
     lastSignInAt?: string;
     createdAt?: string;
+    roles?: string[];
     metadata?: {
         full_name?: string;
         phone?: string;
@@ -30,9 +31,12 @@ export interface AuthResponse {
     success: boolean;
     message?: string;
     accessToken?: string;
+    appAccessToken?: string;
+    supabaseAccessToken?: string;
     refreshToken?: string;
     expiresIn?: number;
     tokenType?: string;
+    appRoles?: string[];
     user?: User;
     error?: string;
 }

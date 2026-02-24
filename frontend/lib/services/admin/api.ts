@@ -42,12 +42,16 @@ api.interceptors.response.use(
 
                     if (response.data.accessToken) {
                         Cookies.set('accessToken', response.data.accessToken, { expires: 1 });
+                        if (response.data.supabaseAccessToken) {
+                            Cookies.set('supabaseAccessToken', response.data.supabaseAccessToken, { expires: 1 });
+                        }
                         originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
                         return api(originalRequest);
                     }
                 } catch (refreshError) {
                     // Refresh failed, redirect to login
                     Cookies.remove('accessToken');
+                    Cookies.remove('supabaseAccessToken');
                     Cookies.remove('refreshToken');
                     window.location.href = '/login';
                 }

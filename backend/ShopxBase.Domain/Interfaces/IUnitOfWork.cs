@@ -20,6 +20,9 @@ public interface IUnitOfWork : IDisposable
     IRepository<Contact> Contacts { get; }
     IRepository<Cart> Carts { get; }
     IRepository<ContactMessage> ContactMessages { get; }
+    IRepository<BusinessRegistration> BusinessRegistrations { get; }
+    IRepository<Shop> Shops { get; }
+    IRepository<ShopMember> ShopMembers { get; }
 
     IProductRepository ProductRepository { get; }
     IOrderRepository OrderRepository { get; }

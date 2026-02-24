@@ -20,6 +20,7 @@ import {
     Bell,
     Moon,
     Sun,
+    Store,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -32,6 +33,7 @@ const menuItems = [
     { name: 'Mã giảm giá', href: '/admin/coupons', icon: Ticket },
     { name: 'Sliders', href: '/admin/sliders', icon: Image },
     { name: 'Tin nhắn', href: '/admin/messages', icon: MessageSquare },
+    { name: 'Yêu cầu mở shop', href: '/admin/shop-requests', icon: Store },
     { name: 'Người dùng', href: '/admin/users', icon: Users },
 ];
 
