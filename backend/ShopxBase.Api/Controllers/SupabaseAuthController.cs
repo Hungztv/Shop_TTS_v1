@@ -251,25 +251,54 @@ public class SupabaseAuthController : ControllerBase
     /// <summary>
     /// Get current user info with roles from ASP.NET Core Identity
     /// Use this endpoint to get roles for authorization
+    /// Works with both Supabase tokens and app JWTs
     /// </summary>
     [HttpGet("me/with-roles")]
     [Authorize]
     public async Task<IActionResult> GetCurrentUserWithRoles()
     {
         var accessToken = GetAccessToken();
-        if (string.IsNullOrEmpty(accessToken))
+
+        // Cố lấy user từ Supabase trước
+        SupabaseUser? supabaseUser = null;
+        if (!string.IsNullOrEmpty(accessToken))
         {
-            return Unauthorized(new { success = false, message = "Access token không hợp lệ" });
+            supabaseUser = await _authService.GetUserAsync(accessToken);
         }
 
-        var supabaseUser = await _authService.GetUserAsync(accessToken);
+        // Nếu là app token (không phải Supabase token), lấy thông tin từ claims
+        string? userEmail = supabaseUser?.Email;
+        string? userId = supabaseUser?.Id;
+
         if (supabaseUser == null)
         {
-            return Unauthorized(new { success = false, message = "Không thể lấy thông tin người dùng từ Supabase" });
+            // Fallback: token là app JWT, đọc claims trực tiếp
+            userEmail = User.FindFirst(ClaimTypes.Email)?.Value
+                ?? User.FindFirst("email")?.Value;
+            userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
         }
 
-        // Fetch user from AppUser to get roles
-        var appUser = await _userManager.FindByEmailAsync(supabaseUser.Email);
+        if (string.IsNullOrWhiteSpace(userEmail) && string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized(new { success = false, message = "Không thể xác định người dùng" });
+        }
+
+        // Tìm AppUser (hoặc tạo nếu chưa có)
+        AppUser? appUser = null;
+
+        if (!string.IsNullOrWhiteSpace(userId))
+            appUser = await _userManager.FindByIdAsync(userId);
+
+        if (appUser == null && !string.IsNullOrWhiteSpace(userEmail))
+            appUser = await _userManager.FindByEmailAsync(userEmail);
+
+        // Nếu vẫn chưa có AppUser mà có supabaseUser → auto-create
+        if (appUser == null && supabaseUser != null)
+        {
+            appUser = await FindOrCreateAppUserAsync(supabaseUser);
+        }
+
         if (appUser == null)
         {
             return NotFound(new { success = false, message = "Người dùng không tồn tại trong hệ thống" });
@@ -283,15 +312,18 @@ public class SupabaseAuthController : ControllerBase
             success = true,
             user = new
             {
-                id = supabaseUser.Id,
-                email = supabaseUser.Email,
-                phone = supabaseUser.Phone,
-                emailConfirmed = supabaseUser.EmailConfirmedAt.HasValue,
-                phoneConfirmed = supabaseUser.PhoneConfirmedAt.HasValue,
-                lastSignInAt = supabaseUser.LastSignInAt,
-                createdAt = supabaseUser.CreatedAt,
+                id = appUser.Id,
+                email = appUser.Email,
+                phone = supabaseUser?.Phone ?? appUser.PhoneNumber,
+                emailConfirmed = supabaseUser?.EmailConfirmedAt.HasValue ?? appUser.EmailConfirmed,
+                phoneConfirmed = supabaseUser?.PhoneConfirmedAt.HasValue ?? false,
+                lastSignInAt = supabaseUser?.LastSignInAt,
+                createdAt = supabaseUser?.CreatedAt ?? appUser.CreatedAt,
                 roles = roles.ToList(),
-                metadata = supabaseUser.UserMetadata
+                metadata = supabaseUser?.UserMetadata ?? new Dictionary<string, object>
+                {
+                    { "full_name", appUser.FullName ?? "" }
+                }
             }
         });
     }
@@ -424,22 +456,23 @@ public class SupabaseAuthController : ControllerBase
             if (supabaseUser == null)
                 return new List<string>();
 
-            AppUser? appUser = null;
-
-            if (!string.IsNullOrWhiteSpace(supabaseUser.Id))
-            {
-                appUser = await _userManager.FindByIdAsync(supabaseUser.Id);
-            }
-
-            if (appUser == null && !string.IsNullOrWhiteSpace(supabaseUser.Email))
-            {
-                appUser = await _userManager.FindByEmailAsync(supabaseUser.Email);
-            }
+            var appUser = await FindOrCreateAppUserAsync(supabaseUser);
 
             if (appUser == null)
                 return new List<string>();
 
             var roles = await _userManager.GetRolesAsync(appUser);
+
+            // Ensure at least Customer role
+            if (!roles.Any())
+            {
+                if (!await _userManager.IsInRoleAsync(appUser, "Customer"))
+                {
+                    await _userManager.AddToRoleAsync(appUser, "Customer");
+                }
+                roles = await _userManager.GetRolesAsync(appUser);
+            }
+
             return roles.ToList();
         }
         catch (Exception ex)
@@ -456,13 +489,7 @@ public class SupabaseAuthController : ControllerBase
             if (supabaseUser == null)
                 return null;
 
-            AppUser? appUser = null;
-
-            if (!string.IsNullOrWhiteSpace(supabaseUser.Id))
-                appUser = await _userManager.FindByIdAsync(supabaseUser.Id);
-
-            if (appUser == null && !string.IsNullOrWhiteSpace(supabaseUser.Email))
-                appUser = await _userManager.FindByEmailAsync(supabaseUser.Email);
+            var appUser = await FindOrCreateAppUserAsync(supabaseUser);
 
             if (appUser == null)
                 return null;
@@ -472,6 +499,74 @@ public class SupabaseAuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Không thể tạo app access token cho user SupabaseId={SupabaseId}, Email={Email}", supabaseUser?.Id, supabaseUser?.Email);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Find AppUser by Supabase ID or Email. If not found, auto-create one.
+    /// This handles users who registered via SupabaseAuth/signup without local AppUser creation.
+    /// </summary>
+    private async Task<AppUser?> FindOrCreateAppUserAsync(SupabaseUser supabaseUser)
+    {
+        try
+        {
+            AppUser? appUser = null;
+
+            // Try find by Supabase ID first
+            if (!string.IsNullOrWhiteSpace(supabaseUser.Id))
+            {
+                appUser = await _userManager.FindByIdAsync(supabaseUser.Id);
+            }
+
+            // Fallback: find by email
+            if (appUser == null && !string.IsNullOrWhiteSpace(supabaseUser.Email))
+            {
+                appUser = await _userManager.FindByEmailAsync(supabaseUser.Email);
+            }
+
+            // If still not found, auto-create local AppUser
+            if (appUser == null && !string.IsNullOrWhiteSpace(supabaseUser.Email))
+            {
+                var fullName = supabaseUser.UserMetadata != null
+                    && supabaseUser.UserMetadata.TryGetValue("full_name", out var fnObj)
+                    ? fnObj?.ToString()
+                    : supabaseUser.Email;
+
+                appUser = new AppUser
+                {
+                    Id = supabaseUser.Id,
+                    UserName = supabaseUser.Email,
+                    Email = supabaseUser.Email,
+                    FullName = fullName,
+                    PhoneNumber = supabaseUser.Phone,
+                    Occupation = "Customer",
+                    Address = string.Empty,
+                    Avatar = string.Empty,
+                    token = string.Empty,
+                    CreatedAt = supabaseUser.CreatedAt,
+                    EmailConfirmed = supabaseUser.EmailConfirmedAt.HasValue
+                };
+
+                var result = await _userManager.CreateAsync(appUser);
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(appUser, "Customer");
+                    _logger.LogInformation("Auto-created local AppUser for SupabaseId={SupabaseId}, Email={Email}", supabaseUser.Id, supabaseUser.Email);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to auto-create AppUser: {Errors}",
+                        string.Join(", ", result.Errors.Select(e => e.Description)));
+                    return null;
+                }
+            }
+
+            return appUser;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in FindOrCreateAppUserAsync for SupabaseId={SupabaseId}, Email={Email}", supabaseUser.Id, supabaseUser.Email);
             return null;
         }
     }

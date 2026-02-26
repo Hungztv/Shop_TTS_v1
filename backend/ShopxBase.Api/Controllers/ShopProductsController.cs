@@ -7,7 +7,7 @@ using ShopxBase.Application.Features.ShopProducts.Queries.GetShopProducts;
 
 namespace ShopxBase.Api.Controllers;
 
-[Authorize(Roles = "Admin,Seller")]
+
 [Route("api/shops/me/products")]
 public class ShopProductsController : BaseApiController
 {

@@ -13,7 +13,7 @@ public static class DbInitializer
         var userManager = serviceProvider.GetRequiredService<UserManager<AppUser>>();
 
         // Seed roles
-        string[] roles = { "Admin", "Customer", "Staff" };
+        string[] roles = { "Admin", "Customer", "Staff", "Seller" };
 
         foreach (var role in roles)
         {

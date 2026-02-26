@@ -10,6 +10,7 @@ interface AuthContextType {
     signIn: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
     signUp: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; message?: string }>;
     signOut: () => Promise<void>;
+    refreshUserRoles: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -112,8 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         Cookies.remove('refreshToken');
         setUser(null);
     };
+    // Refresh roles từ backend (dùng sau khi seller được duyệt)
+    const refreshUserRoles = async () => {
+        const supabaseAccessToken = Cookies.get('supabaseAccessToken') || Cookies.get('accessToken');
+        if (!supabaseAccessToken) return;
+        const result = await authService.getMeWithRoles(supabaseAccessToken);
+        if (result.success && result.user) {
+            setUser(result.user);
+        }
+    };
     return (
-        <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, signIn, signUp, signOut }}>
+        <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, signIn, signUp, signOut, refreshUserRoles }}>
             {children}
         </AuthContext.Provider>
     );

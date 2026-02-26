@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { shopService } from '@/lib/services/shop-service';
+import { useAuth } from '@/contexts/AuthContext';
 import type { BusinessRegistrationDto } from '@/types/shop';
 import { RegistrationStatus } from '@/types/shop';
 import {
@@ -19,6 +20,7 @@ import {
 
 export default function ShopRegistrationPage() {
     const router = useRouter();
+    const { refreshUserRoles } = useAuth();
     const [registration, setRegistration] = useState<BusinessRegistrationDto | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,9 +43,10 @@ export default function ShopRegistrationPage() {
         try {
             const data = await shopService.getMyRegistration();
             setRegistration(data);
-            // Nếu đã approved -> redirect sang shop
+            // Nếu đã approved -> refresh roles và redirect sang seller center
             if (data?.status === RegistrationStatus.Approved) {
-                router.push('/account/shop');
+                await refreshUserRoles();
+                router.push('/seller/shop');
             }
         } catch {
             // Chưa có đăng ký -> null -> hiện form
@@ -299,11 +302,10 @@ const FormField = forwardRef<HTMLInputElement, {
                 ref={ref}
                 type={type}
                 placeholder={placeholder}
-                className={`w-full pl-10 pr-4 py-3 rounded-xl border ${
-                    error
+                className={`w-full pl-10 pr-4 py-3 rounded-xl border ${error
                         ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
                         : 'border-slate-200 focus:border-violet-400 focus:ring-violet-100'
-                } focus:ring-2 outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
+                    } focus:ring-2 outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
                 {...props}
             />
         </div>

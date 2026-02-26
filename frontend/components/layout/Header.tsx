@@ -16,6 +16,8 @@ import {
   Package,
   LogOut,
   Settings,
+  Store,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -246,6 +248,28 @@ export default function Header() {
                           {item.label}
                         </Link>
                       ))}
+                      {/* Seller Center link - only for Seller/Admin */}
+                      {user?.roles?.some(r => r.toLowerCase() === 'seller' || r.toLowerCase() === 'admin') && (
+                        <Link
+                          href="/seller/shop"
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all font-medium"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <Store className="w-4 h-4" />
+                          Seller Center
+                        </Link>
+                      )}
+                      {/* Admin Panel link - only for Admin */}
+                      {user?.roles?.some(r => r.toLowerCase() === 'admin') && (
+                        <Link
+                          href="/admin"
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-all font-medium"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          Admin Panel
+                        </Link>
+                      )}
                       <button
                         onClick={handleSignOut}
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all mt-1 border-t border-slate-100 dark:border-slate-700 pt-2"

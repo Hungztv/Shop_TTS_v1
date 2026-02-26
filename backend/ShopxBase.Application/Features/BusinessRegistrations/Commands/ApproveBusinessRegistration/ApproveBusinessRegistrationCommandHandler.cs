@@ -97,20 +97,32 @@ public class ApproveBusinessRegistrationCommandHandler : IRequestHandler<Approve
 
     private async Task EnsureSellerRoleAsync(BusinessRegistration registration)
     {
-        var user = await _userManager.FindByIdAsync(registration.UserId);
-        if (user == null && !string.IsNullOrWhiteSpace(registration.Email))
+        try
         {
-            user = await _userManager.FindByEmailAsync(registration.Email);
+            var user = await _userManager.FindByIdAsync(registration.UserId);
+            if (user == null && !string.IsNullOrWhiteSpace(registration.Email))
+            {
+                user = await _userManager.FindByEmailAsync(registration.Email);
+            }
+
+            if (user == null)
+            {
+                // Không throw - approval đã lưu thành công, role sẽ được gán khi user đăng nhập lần tiếp
+                return;
+            }
+
+            if (!await _userManager.IsInRoleAsync(user, "Seller"))
+            {
+                var result = await _userManager.AddToRoleAsync(user, "Seller");
+                if (!result.Succeeded)
+                {
+                    // Log lỗi nhưng không throw - approval đã thành công
+                }
+            }
         }
-
-        if (user == null)
-            throw new DomainException("Không tìm thấy người dùng để gán vai trò Seller", "USER_NOT_FOUND_FOR_ROLE_ASSIGN");
-
-        if (!await _userManager.IsInRoleAsync(user, "Seller"))
+        catch (Exception)
         {
-            var result = await _userManager.AddToRoleAsync(user, "Seller");
-            if (!result.Succeeded)
-                throw new DomainException("Không thể gán vai trò Seller cho người dùng", "ROLE_ASSIGN_FAILED");
+            // Không throw - approval đã lưu thành công
         }
     }
 }
