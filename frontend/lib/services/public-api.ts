@@ -5,12 +5,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 // Types
 export interface Slider {
     id: number;
+    name: string;
     title: string;
-    subtitle?: string;
-    imageUrl: string;
-    linkUrl?: string;
-    order: number;
+    image: string;
+    description: string;
+    link: string;
+    displayOrder: number;
+    status: number;
     isActive: boolean;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface Category {

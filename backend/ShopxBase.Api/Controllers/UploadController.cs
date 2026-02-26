@@ -52,6 +52,14 @@ public class UploadController : ControllerBase
         return HandleUploadResult(result);
     }
 
+    [HttpPost("slider")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UploadSliderImage(IFormFile file)
+    {
+        var result = await _storageService.UploadAsync(file, "products", "sliders");
+        return HandleUploadResult(result);
+    }
+
     [HttpPost("multiple")]
     [Authorize(Roles = "Admin,Seller")]
     public async Task<IActionResult> UploadMultiple(
