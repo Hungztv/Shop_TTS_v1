@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { formatPrice } from "@/lib/utils/product-mapper";
 
 // ==================== ZOD SCHEMA ====================
 
@@ -111,13 +112,6 @@ export default function CheckoutPage() {
       fetchCart();
     }
   }, [isAuthenticated, fetchCart]);
-
-  const formatPrice = (value: number): string => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(value);
-  };
 
   const subtotal = cart?.totalPrice ?? 0;
   const shippingCost = 0; // Free shipping

@@ -5,8 +5,9 @@ import Link from 'next/link';
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryNav from "@/components/ui/CategoryNav";
 import ProductCard from "@/components/ui/ProductCard";
-import { ArrowRight, Sparkles, TrendingUp, Zap, Truck, ShieldCheck, RotateCcw, CreditCard } from "lucide-react";
+import { ArrowRight, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { productsPublicService, Product } from "@/lib/services/public-api";
+import { mapProduct } from "@/lib/utils/product-mapper";
 
 export default function Home() {
   const [flashDeals, setFlashDeals] = useState<Product[]>([]);
@@ -38,19 +39,6 @@ export default function Home() {
       setLoading(false);
     }
   };
-
-  const mapProduct = (product: Product) => ({
-    id: product.id,
-    name: product.name,
-    image: product.image || 'https://placehold.co/400x400?text=No+Image',
-    price: product.price,
-    originalPrice: product.capitalPrice && product.capitalPrice > product.price ? product.capitalPrice : undefined,
-    rating: product.averageRating || 0,
-    reviews: product.totalReviews || 0,
-    category: product.categoryName || '',
-    badge: product.capitalPrice && product.capitalPrice > product.price ? 'sale' as const : undefined,
-    slug: product.slug,
-  });
 
   const ProductGridSkeleton = ({ count = 4 }: { count?: number }) => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -93,32 +81,11 @@ export default function Home() {
     </div>
   );
 
+
   return (
     <div className="bg-slate-50 dark:bg-slate-900">
       {/* Hero Banner Slider */}
       <HeroBanner />
-
-      {/* Trust Badges - ngay dưới banner */}
-      <section className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 py-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { icon: Truck, title: "Giao hàng nhanh", desc: "Toàn quốc 1-3 ngày", color: "text-emerald-500" },
-              { icon: ShieldCheck, title: "100% Chính hãng", desc: "Cam kết hàng thật", color: "text-blue-500" },
-              { icon: RotateCcw, title: "Đổi trả dễ dàng", desc: "Trong vòng 30 ngày", color: "text-amber-500" },
-              { icon: CreditCard, title: "Thanh toán an toàn", desc: "Bảo mật tuyệt đối", color: "text-violet-500" },
-            ].map((badge, index) => (
-              <div key={index} className="flex items-center gap-3 py-2">
-                <badge.icon className={`w-8 h-8 ${badge.color} flex-shrink-0`} />
-                <div>
-                  <p className="font-semibold text-sm text-slate-800 dark:text-white">{badge.title}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{badge.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Category Navigation */}
       <CategoryNav />

@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import Link from "next/link";
+import { formatPrice } from "@/lib/utils/product-mapper";
 
 export default function WishlistPage() {
   const { wishlist, isLoading, removeItem, clearAll, fetchWishlist } = useWishlist();
@@ -19,9 +20,6 @@ export default function WishlistPage() {
   useEffect(() => {
     if (isAuthenticated) fetchWishlist();
   }, [isAuthenticated, fetchWishlist]);
-
-  const formatPrice = (v: number) =>
-    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(v);
 
   const handleRemove = async (wishlistId: number) => {
     setRemovingIds((prev) => new Set(prev).add(wishlistId));

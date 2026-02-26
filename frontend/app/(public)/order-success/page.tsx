@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,27 +10,12 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { orderService, type OrderDto } from "@/lib/services/order-service";
 import { toast } from "sonner";
 
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const orderCode = searchParams.get("code");
-  const [order, setOrder] = useState<OrderDto | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [copied, setCopied] = useState<boolean>(false);
-
-  const formatPrice = (value: number): string => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(value);
-  };
-
-  useEffect(() => {
-    // We don't have getOrderByCode, so show success with code
-    setIsLoading(false);
-  }, [orderCode]);
 
   const handleCopyCode = () => {
     if (orderCode) {

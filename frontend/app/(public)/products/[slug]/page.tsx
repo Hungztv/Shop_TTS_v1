@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
     Star, Minus, Plus, ChevronLeft, ChevronRight,
-    Truck, Shield, RotateCcw, Package, ArrowLeftRight
+    Truck, Shield, RotateCcw, Package
 } from 'lucide-react';
 import { productsPublicService, Product } from '@/lib/services/public-api';
+import { formatPrice } from '@/lib/utils/product-mapper';
+import Image from 'next/image';
 import AddToCartButton from '@/components/ui/AddToCartButton';
 import WishlistButton from '@/components/ui/WishlistButton';
 import CompareButton from '@/components/ui/CompareButton';
@@ -35,16 +38,9 @@ export default function ProductDetailPage() {
         loadProduct();
     }, [slug]);
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-    };
-
-    // Generate placeholder images for gallery
+    // Only use real product image(s)
     const images = product ? [
-        product.image || 'https://placehold.co/600x600?text=Product',
-        'https://placehold.co/600x600?text=View+2',
-        'https://placehold.co/600x600?text=View+3',
-        'https://placehold.co/600x600?text=View+4',
+        product.image || '/placeholder.jpg',
     ] : [];
 
     const discount = product?.capitalPrice && product.capitalPrice > product.price
@@ -53,7 +49,7 @@ export default function ProductDetailPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 py-8">
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
                 <div className="max-w-7xl mx-auto px-4">
                     <div className="grid lg:grid-cols-2 gap-8">
                         {/* Image Skeleton */}
@@ -80,11 +76,11 @@ export default function ProductDetailPage() {
 
     if (!product) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-6xl mb-4">😢</div>
-                    <h1 className="text-2xl font-bold text-slate-800 mb-2">Không tìm thấy sản phẩm</h1>
-                    <p className="text-slate-500 mb-6">Sản phẩm này có thể đã bị xóa hoặc không tồn tại</p>
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Không tìm thấy sản phẩm</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mb-6">Sản phẩm này có thể đã bị xóa hoặc không tồn tại</p>
                     <button
                         onClick={() => router.push('/products')}
                         className="px-6 py-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-colors"
@@ -97,24 +93,24 @@ export default function ProductDetailPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
             {/* Breadcrumb */}
-            <div className="bg-white border-b">
+            <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700">
                 <div className="max-w-7xl mx-auto px-4 py-3">
                     <nav className="flex items-center gap-2 text-sm text-slate-500">
-                        <a href="/" className="hover:text-violet-600">Trang chủ</a>
+                        <Link href="/" className="hover:text-violet-600">Trang chủ</Link>
                         <span>/</span>
-                        <a href="/products" className="hover:text-violet-600">Sản phẩm</a>
+                        <Link href="/products" className="hover:text-violet-600">Sản phẩm</Link>
                         <span>/</span>
                         {product.categoryName && (
                             <>
-                                <a href={`/products?category=${product.categoryId}`} className="hover:text-violet-600">
+                                <Link href={`/products?category=${product.categoryId}`} className="hover:text-violet-600">
                                     {product.categoryName}
-                                </a>
+                                </Link>
                                 <span>/</span>
                             </>
                         )}
-                        <span className="text-slate-800 font-medium truncate max-w-[200px]">{product.name}</span>
+                        <span className="text-slate-800 dark:text-white font-medium truncate max-w-[200px]">{product.name}</span>
                     </nav>
                 </div>
             </div>
@@ -124,7 +120,7 @@ export default function ProductDetailPage() {
                     {/* Product Gallery */}
                     <div className="space-y-4">
                         {/* Main Image */}
-                        <div className="relative bg-white rounded-3xl overflow-hidden shadow-sm">
+                        <div className="relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm">
                             <img
                                 src={images[selectedImage]}
                                 alt={product.name}
@@ -138,36 +134,42 @@ export default function ProductDetailPage() {
                                 </div>
                             )}
 
-                            {/* Navigation Arrows */}
-                            <button
-                                onClick={() => setSelectedImage(i => i > 0 ? i - 1 : images.length - 1)}
-                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-                            >
-                                <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={() => setSelectedImage(i => i < images.length - 1 ? i + 1 : 0)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-                            >
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
+                            {/* Navigation Arrows - only show when multiple images */}
+                            {images.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={() => setSelectedImage(i => i > 0 ? i - 1 : images.length - 1)}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+                                    >
+                                        <ChevronLeft className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedImage(i => i < images.length - 1 ? i + 1 : 0)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+                                    >
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </>
+                            )}
                         </div>
 
-                        {/* Thumbnails */}
-                        <div className="flex gap-3 overflow-x-auto pb-2">
-                            {images.map((img, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setSelectedImage(i)}
-                                    className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${selectedImage === i
-                                        ? 'border-violet-500 ring-2 ring-violet-200'
-                                        : 'border-transparent hover:border-slate-300'
-                                        }`}
-                                >
-                                    <img src={img} alt="" className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
+                        {/* Thumbnails - only show when multiple images */}
+                        {images.length > 1 && (
+                            <div className="flex gap-3 overflow-x-auto pb-2">
+                                {images.map((img, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setSelectedImage(i)}
+                                        className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${selectedImage === i
+                                            ? 'border-violet-500 ring-2 ring-violet-200'
+                                            : 'border-transparent hover:border-slate-300'
+                                            }`}
+                                    >
+                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Product Info */}
@@ -185,7 +187,7 @@ export default function ProductDetailPage() {
                         </div>
 
                         {/* Name */}
-                        <h1 className="text-2xl lg:text-3xl font-bold text-slate-800">
+                        <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white">
                             {product.name}
                         </h1>
 
@@ -213,7 +215,7 @@ export default function ProductDetailPage() {
                         </div>
 
                         {/* Price */}
-                        <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl p-6">
+                        <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-2xl p-6">
                             <div className="flex items-baseline gap-4">
                                 <span className="text-3xl lg:text-4xl font-bold text-violet-600">
                                     {formatPrice(product.price)}
@@ -233,18 +235,18 @@ export default function ProductDetailPage() {
 
                         {/* Quantity Selector */}
                         <div className="flex items-center gap-6">
-                            <span className="text-slate-600 font-medium">Số lượng:</span>
-                            <div className="flex items-center gap-3 bg-slate-100 rounded-xl p-1">
+                            <span className="text-slate-600 dark:text-slate-400 font-medium">Số lượng:</span>
+                            <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
                                 <button
                                     onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                                    className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                    className="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
                                 >
                                     <Minus className="w-4 h-4" />
                                 </button>
-                                <span className="w-12 text-center font-semibold text-lg">{quantity}</span>
+                                <span className="w-12 text-center font-semibold text-lg dark:text-white">{quantity}</span>
                                 <button
                                     onClick={() => setQuantity(q => Math.min(product.quantity, q + 1))}
-                                    className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+                                    className="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
                                 >
                                     <Plus className="w-4 h-4" />
                                 </button>
@@ -261,30 +263,30 @@ export default function ProductDetailPage() {
                         </div>
 
                         {/* Trust Badges */}
-                        <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                        <div className="grid grid-cols-3 gap-4 pt-4 border-t dark:border-slate-700">
                             <div className="text-center">
                                 <Truck className="w-8 h-8 text-violet-500 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-slate-700">Giao hàng nhanh</p>
-                                <p className="text-xs text-slate-500">1-3 ngày</p>
+                                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Giao hàng nhanh</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">1-3 ngày</p>
                             </div>
                             <div className="text-center">
                                 <Shield className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-slate-700">Chính hãng 100%</p>
-                                <p className="text-xs text-slate-500">Bảo hành 12 tháng</p>
+                                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Chính hãng 100%</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Bảo hành 12 tháng</p>
                             </div>
                             <div className="text-center">
                                 <RotateCcw className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-slate-700">Đổi trả dễ dàng</p>
-                                <p className="text-xs text-slate-500">Trong 30 ngày</p>
+                                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Đổi trả dễ dàng</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Trong 30 ngày</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Product Details Tabs */}
-                <div className="mt-12 bg-white rounded-3xl shadow-sm overflow-hidden">
+                <div className="mt-12 bg-white dark:bg-slate-800 rounded-3xl shadow-sm overflow-hidden">
                     {/* Tab Headers */}
-                    <div className="flex border-b">
+                    <div className="flex border-b dark:border-slate-700">
                         {[
                             { key: 'description', label: 'Mô tả sản phẩm' },
                             { key: 'specs', label: 'Thông số kỹ thuật' },
@@ -294,8 +296,8 @@ export default function ProductDetailPage() {
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key as any)}
                                 className={`flex-1 py-4 px-6 text-center font-medium transition-colors ${activeTab === tab.key
-                                    ? 'text-violet-600 border-b-2 border-violet-600 bg-violet-50'
-                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                                    ? 'text-violet-600 border-b-2 border-violet-600 bg-violet-50 dark:bg-violet-900/20'
+                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
                             >
                                 {tab.label}
@@ -306,8 +308,8 @@ export default function ProductDetailPage() {
                     {/* Tab Content */}
                     <div className="p-6 lg:p-8">
                         {activeTab === 'description' && (
-                            <div className="prose prose-slate max-w-none">
-                                <p className="text-slate-600 leading-relaxed">
+                            <div className="prose prose-slate dark:prose-invert max-w-none">
+                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                                     {product.description || 'Chưa có mô tả chi tiết cho sản phẩm này.'}
                                 </p>
                             </div>

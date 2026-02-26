@@ -11,16 +11,17 @@ import {
     Shield,
     HeadphonesIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 const footerLinks = {
     company: [
-        { label: "Về chúng tôi", href: "#" },
+        { label: "Về chúng tôi", href: "/about" },
         { label: "Tuyển dụng", href: "#" },
         { label: "Tin tức", href: "#" },
-        { label: "Liên hệ", href: "#" },
+        { label: "Liên hệ", href: "/contact" },
     ],
     support: [
-        { label: "Trung tâm trợ giúp", href: "#" },
+        { label: "Trung tâm trợ giúp", href: "/contact" },
         { label: "Hướng dẫn mua hàng", href: "#" },
         { label: "Chính sách đổi trả", href: "#" },
         { label: "Chính sách bảo hành", href: "#" },
@@ -87,14 +88,14 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
                     {/* Brand Info */}
                     <div className="lg:col-span-2">
-                        <a href="/" className="flex items-center gap-3 mb-6">
+                        <Link href="/" className="flex items-center gap-3 mb-6">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
                                 <span className="text-white font-bold text-2xl">S</span>
                             </div>
                             <span className="text-2xl font-bold bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
                                 ShopTTS
                             </span>
-                        </a>
+                        </Link>
                         <p className="text-slate-400 mb-6 leading-relaxed">
                             ShopTTS - Nền tảng thương mại điện tử hàng đầu Việt Nam, mang đến
                             trải nghiệm mua sắm tuyệt vời với hàng triệu sản phẩm chính hãng.
@@ -127,12 +128,12 @@ export default function Footer() {
                         <ul className="space-y-3">
                             {footerLinks.company.map((link) => (
                                 <li key={link.label}>
-                                    <a
+                                    <Link
                                         href={link.href}
                                         className="text-slate-400 hover:text-violet-400 transition-colors"
                                     >
                                         {link.label}
-                                    </a>
+                                    </Link>
                                 </li>
                             ))}
                         </ul>
@@ -144,12 +145,12 @@ export default function Footer() {
                         <ul className="space-y-3">
                             {footerLinks.support.map((link) => (
                                 <li key={link.label}>
-                                    <a
+                                    <Link
                                         href={link.href}
                                         className="text-slate-400 hover:text-violet-400 transition-colors"
                                     >
                                         {link.label}
-                                    </a>
+                                    </Link>
                                 </li>
                             ))}
                         </ul>
@@ -198,17 +199,17 @@ export default function Footer() {
                 <div className="max-w-7xl mx-auto px-4 py-6">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <p className="text-slate-400 text-sm">
-                            © 2026 ShopTTS. Tất cả quyền được bảo lưu.
+                            © {new Date().getFullYear()} ShopTTS. Tất cả quyền được bảo lưu.
                         </p>
                         <div className="flex items-center gap-4">
                             {footerLinks.legal.map((link, index) => (
-                                <a
+                                <Link
                                     key={index}
                                     href={link.href}
                                     className="text-slate-400 hover:text-violet-400 text-sm transition-colors"
                                 >
                                     {link.label}
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     </div>

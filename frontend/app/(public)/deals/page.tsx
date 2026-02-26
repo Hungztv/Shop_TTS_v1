@@ -3,25 +3,21 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Flame, Tag, Clock, ArrowRight, Loader2 } from "lucide-react";
-import { productsPublicService, type Product as PublicProduct } from "@/lib/services/public-api";
+import { productsPublicService, type Product } from "@/lib/services/public-api";
 import ProductCard from "@/components/ui/ProductCard";
-
-interface DealProduct extends PublicProduct {
-    capitalPrice: number;
-}
+import { mapProduct, calculateDiscount } from "@/lib/utils/product-mapper";
 
 export default function DealsPage() {
-    const [products, setProducts] = useState<DealProduct[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
         const fetchDeals = async () => {
             setIsLoading(true);
             try {
-                // Lấy các sản phẩm bán chạy và có giảm giá (capitalPrice > price)
+                // Lấy các sản phẩm có giảm giá (capitalPrice > price)
                 const data = await productsPublicService.getAll({ pageSize: 50 });
-                // Lọc sản phẩm có giá giảm (capitalPrice > price)
-                const dealsProducts = (data.items as DealProduct[]).filter(
+                const dealsProducts = data.items.filter(
                     (p) => p.capitalPrice && p.capitalPrice > p.price
                 );
                 setProducts(dealsProducts);
@@ -33,17 +29,6 @@ export default function DealsPage() {
         };
         fetchDeals();
     }, []);
-
-    const formatPrice = (value: number): string => {
-        return new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-        }).format(value);
-    };
-
-    const calculateDiscount = (original: number, sale: number): number => {
-        return Math.round(((original - sale) / original) * 100);
-    };
 
     return (
         <div className="min-h-screen">
@@ -130,7 +115,7 @@ export default function DealsPage() {
                                     {products.length > 0
                                         ? Math.max(
                                             ...products.map((p) =>
-                                                calculateDiscount(p.capitalPrice, p.price)
+                                                calculateDiscount(p.capitalPrice || 0, p.price)
                                             )
                                         )
                                         : 0}
@@ -142,24 +127,7 @@ export default function DealsPage() {
                         {/* Products Grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                             {products.map((product) => (
-                                <div key={product.id} className="relative">
-                                    {/* Discount Badge */}
-                                    <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-rose-500 text-white text-xs font-bold rounded-lg">
-                                        -{calculateDiscount(product.capitalPrice, product.price)}%
-                                    </div>
-                                    <ProductCard
-                                        id={product.id}
-                                        name={product.name}
-                                        slug={product.slug}
-                                        image={product.image || "/placeholder.jpg"}
-                                        price={product.price}
-                                        originalPrice={product.capitalPrice}
-                                        rating={product.averageRating || 0}
-                                        reviews={product.totalReviews || 0}
-                                        badge="sale"
-                                        category={product.categoryName || ""}
-                                    />
-                                </div>
+                                <ProductCard key={product.id} {...mapProduct(product)} />
                             ))}
                         </div>
                     </>

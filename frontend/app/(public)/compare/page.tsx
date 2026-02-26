@@ -15,6 +15,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import Link from "next/link";
+import { formatPrice } from "@/lib/utils/product-mapper";
 
 export default function ComparePage() {
   const { compare, isLoading, removeItem, clearAll, fetchCompare } = useCompare();
@@ -26,9 +27,6 @@ export default function ComparePage() {
   useEffect(() => {
     if (isAuthenticated) fetchCompare();
   }, [isAuthenticated, fetchCompare]);
-
-  const formatPrice = (v: number) =>
-    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(v);
 
   const handleClearAll = async () => {
     if (!confirm("Xóa tất cả sản phẩm so sánh?")) return;

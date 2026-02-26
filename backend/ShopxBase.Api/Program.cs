@@ -305,6 +305,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         DbInitializer.SeedRolesAndAdminAsync(services).Wait();
+        DataSeeder.SeedSampleDataAsync(app.Services).Wait();
     }
     catch (Exception ex)
     {

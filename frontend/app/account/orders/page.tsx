@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Package, Eye, ChevronDown, Truck, CheckCircle, XCircle, Clock, CreditCard } from 'lucide-react';
 import api, { ApiResponse, PaginatedResponse } from '@/lib/services/admin/api';
 import { Order } from '@/lib/services/admin/dashboard-service';
+import { formatPrice } from '@/lib/utils/product-mapper';
 
 const statusConfig: Record<number, { label: string; color: string; icon: any }> = {
     0: { label: 'Chờ xác nhận', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -38,10 +39,6 @@ export default function OrdersPage() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
     };
 
     const formatDate = (date: string) => {

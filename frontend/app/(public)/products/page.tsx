@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, SlidersHorizontal, X, ChevronDown, Grid3X3, LayoutList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Grid3X3, LayoutList, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '@/components/ui/ProductCard';
 import {
     productsPublicService,
@@ -13,6 +13,7 @@ import {
     Brand,
     PaginatedResponse
 } from '@/lib/services/public-api';
+import { mapProduct } from '@/lib/utils/product-mapper';
 
 function ProductsContent() {
     const searchParams = useSearchParams();
@@ -114,31 +115,17 @@ function ProductsContent() {
 
     const hasActiveFilters = categoryId || brandId || search || minPrice || maxPrice;
 
-    // Map product to card props
-    const mapProduct = (product: Product) => ({
-        id: product.id,
-        name: product.name,
-        image: product.image || 'https://placehold.co/400x400?text=No+Image',
-        price: product.price,
-        originalPrice: product.capitalPrice && product.capitalPrice > product.price ? product.capitalPrice : undefined,
-        rating: product.averageRating || 0,
-        reviews: product.totalReviews || 0,
-        category: product.categoryName || '',
-        badge: product.capitalPrice && product.capitalPrice > product.price ? 'sale' as const : undefined,
-        slug: product.slug,
-    });
-
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
             {/* Header */}
-            <div className="bg-white border-b">
+            <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700">
                 <div className="max-w-7xl mx-auto px-4 py-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
                                 Tất cả sản phẩm
                             </h1>
-                            <p className="text-slate-500 mt-1">
+                            <p className="text-slate-500 dark:text-slate-400 mt-1">
                                 {products.totalCount} sản phẩm
                             </p>
                         </div>
@@ -152,7 +139,7 @@ function ProductsContent() {
                                     value={searchInput}
                                     onChange={(e) => setSearchInput(e.target.value)}
                                     placeholder="Tìm kiếm sản phẩm..."
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 outline-none transition-all bg-white dark:bg-slate-800 dark:text-white"
                                 />
                             </div>
                             <button

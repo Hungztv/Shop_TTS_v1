@@ -10,6 +10,7 @@ import { sellerProductsService } from '@/lib/services/seller/shop-products-servi
 import { brandsService } from '@/lib/services/admin/brands-service';
 import { categoriesService } from '@/lib/services/admin/categories-service';
 import { uploadService } from '@/lib/services/admin/upload-service';
+import { formatPrice } from '@/lib/utils/product-mapper';
 import type { Product, Brand, Category } from '@/lib/services/admin/dashboard-service';
 
 interface ProductFormData {
@@ -104,9 +105,6 @@ export default function SellerProductsPage() {
             .replace(/đ/g, 'd')
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '');
-
-    const formatPrice = (p: number) =>
-        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     // Modal
     const openCreate = () => {

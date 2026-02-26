@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Tag, Loader2, X, Check } from "lucide-react";
 import { orderService, type ValidateCouponResult } from "@/lib/services/order-service";
 import { toast } from "sonner";
+import { formatPrice } from "@/lib/utils/product-mapper";
 
 interface CouponInputProps {
   orderValue: number;
@@ -21,13 +22,6 @@ export default function CouponInput({
   const [code, setCode] = useState<string>("");
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  const formatPrice = (value: number): string => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(value);
-  };
 
   const handleApply = async () => {
     if (!code.trim()) {

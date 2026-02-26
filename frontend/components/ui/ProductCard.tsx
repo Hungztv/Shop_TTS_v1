@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { Star, Zap } from "lucide-react";
 import AddToCartButton from "@/components/ui/AddToCartButton";
 import WishlistButton from "@/components/ui/WishlistButton";
 import CompareButton from "@/components/ui/CompareButton";
+import { formatPrice } from "@/lib/utils/product-mapper";
 
 interface ProductCardProps {
     id: number;
@@ -39,13 +41,6 @@ export default function ProductCard({
     const discount = originalPrice
         ? Math.round(((originalPrice - price) / originalPrice) * 100)
         : 0;
-
-    const formatPrice = (value: number) => {
-        return new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-        }).format(value);
-    };
 
     // 3D Tilt Effect
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -138,11 +133,11 @@ export default function ProductCard({
                 </p>
 
                 {/* Name */}
-                <a href={productUrl}>
+                <Link href={productUrl}>
                     <h3 className="font-bold text-slate-800 dark:text-white mb-3 line-clamp-2 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors leading-snug cursor-pointer">
                         {name}
                     </h3>
-                </a>
+                </Link>
 
                 {/* Rating - Enhanced */}
                 <div className="flex items-center gap-2 mb-3">

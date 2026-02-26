@@ -75,9 +75,9 @@ export default function ContactPage() {
     };
 
     const shopInfo = {
-        address: '123 Đường ABC, Quận 1, TP. Hồ Chí Minh',
-        phone: '1900 1234 56',
-        email: 'support@shoptts.vn',
+        address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || '123 Đường ABC, Quận 1, TP. Hồ Chí Minh',
+        phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '1900 1234 56',
+        email: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'support@shoptts.vn',
         hours: [
             { day: 'Thứ 2 - Thứ 6', time: '8:00 - 22:00' },
             { day: 'Thứ 7 - Chủ nhật', time: '9:00 - 21:00' },
@@ -85,7 +85,7 @@ export default function ContactPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
             {/* Hero Section */}
             <section className="relative py-16 md:py-24 overflow-hidden">
                 {/* Background decorations */}
@@ -98,11 +98,11 @@ export default function ContactPage() {
                         <MessageSquare className="w-4 h-4" />
                         Liên hệ với chúng tôi
                     </div>
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-800 mb-6 animate-fade-in-up">
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-800 dark:text-white mb-6 animate-fade-in-up">
                         Chúng tôi luôn sẵn sàng <br />
                         <span className="gradient-text">hỗ trợ bạn</span>
                     </h1>
-                    <p className="text-lg text-slate-600 max-w-2xl mx-auto animate-fade-in-up stagger-2">
+                    <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto animate-fade-in-up stagger-2">
                         Có câu hỏi hoặc cần hỗ trợ? Đội ngũ của chúng tôi sẽ phản hồi trong thời gian sớm nhất.
                     </p>
                 </div>
@@ -114,7 +114,7 @@ export default function ContactPage() {
                     <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
                         {/* Contact Form */}
                         <div className="glass-card rounded-3xl p-6 md:p-8 animate-fade-in-left">
-                            <h2 className="text-2xl font-bold text-slate-800 mb-6">Gửi tin nhắn</h2>
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Gửi tin nhắn</h2>
 
                             {/* Success/Error Alert */}
                             {submitStatus === 'success' && (
@@ -140,13 +140,13 @@ export default function ContactPage() {
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                                 {/* Name */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                         Họ và tên <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="text"
                                         {...register('name')}
-                                        className={`w-full px-4 py-3 rounded-xl border-2 bg-white transition-all outline-none ${errors.name
+                                        className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-800 dark:text-white transition-all outline-none ${errors.name
                                             ? 'border-red-300 focus:border-red-400'
                                             : 'border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
                                             }`}
@@ -160,13 +160,13 @@ export default function ContactPage() {
                                 {/* Email & Phone */}
                                 <div className="grid sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                             Email <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="email"
                                             {...register('email')}
-                                            className={`w-full px-4 py-3 rounded-xl border-2 bg-white transition-all outline-none ${errors.email
+                                            className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-800 dark:text-white transition-all outline-none ${errors.email
                                                 ? 'border-red-300 focus:border-red-400'
                                                 : 'border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
                                                 }`}
@@ -177,13 +177,13 @@ export default function ContactPage() {
                                         )}
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                             Số điện thoại
                                         </label>
                                         <input
                                             type="tel"
                                             {...register('phone')}
-                                            className={`w-full px-4 py-3 rounded-xl border-2 bg-white transition-all outline-none ${errors.phone
+                                            className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-800 dark:text-white transition-all outline-none ${errors.phone
                                                 ? 'border-red-300 focus:border-red-400'
                                                 : 'border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
                                                 }`}
@@ -197,13 +197,13 @@ export default function ContactPage() {
 
                                 {/* Subject */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                         Tiêu đề <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="text"
                                         {...register('subject')}
-                                        className={`w-full px-4 py-3 rounded-xl border-2 bg-white transition-all outline-none ${errors.subject
+                                        className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-800 dark:text-white transition-all outline-none ${errors.subject
                                             ? 'border-red-300 focus:border-red-400'
                                             : 'border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
                                             }`}
@@ -216,13 +216,13 @@ export default function ContactPage() {
 
                                 {/* Message */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                         Nội dung <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
                                         {...register('message')}
                                         rows={5}
-                                        className={`w-full px-4 py-3 rounded-xl border-2 bg-white transition-all outline-none resize-none ${errors.message
+                                        className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-800 dark:text-white transition-all outline-none resize-none ${errors.message
                                             ? 'border-red-300 focus:border-red-400'
                                             : 'border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
                                             }`}
@@ -258,7 +258,7 @@ export default function ContactPage() {
                         <div className="space-y-6 animate-fade-in-right">
                             {/* Info Cards */}
                             <div className="glass-card rounded-3xl p-6 md:p-8">
-                                <h2 className="text-2xl font-bold text-slate-800 mb-6">Thông tin liên hệ</h2>
+                                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Thông tin liên hệ</h2>
 
                                 <div className="space-y-5">
                                     {/* Address */}
@@ -267,7 +267,7 @@ export default function ContactPage() {
                                             <MapPin className="w-6 h-6 text-white" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-slate-800 mb-1">Địa chỉ</h3>
+                                            <h3 className="font-semibold text-slate-800 dark:text-white mb-1">Địa chỉ</h3>
                                             <p className="text-slate-600">{shopInfo.address}</p>
                                         </div>
                                     </div>
@@ -278,7 +278,7 @@ export default function ContactPage() {
                                             <Phone className="w-6 h-6 text-white" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-slate-800 mb-1">Hotline</h3>
+                                            <h3 className="font-semibold text-slate-800 dark:text-white mb-1">Hotline</h3>
                                             <a
                                                 href={`tel:${shopInfo.phone.replace(/\s/g, '')}`}
                                                 className="text-violet-600 hover:text-violet-700 font-medium"
@@ -294,7 +294,7 @@ export default function ContactPage() {
                                             <Mail className="w-6 h-6 text-white" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-slate-800 mb-1">Email</h3>
+                                            <h3 className="font-semibold text-slate-800 dark:text-white mb-1">Email</h3>
                                             <a
                                                 href={`mailto:${shopInfo.email}`}
                                                 className="text-violet-600 hover:text-violet-700 font-medium"
@@ -328,7 +328,7 @@ export default function ContactPage() {
                             <div className="glass-card rounded-3xl overflow-hidden">
                                 <div className="aspect-video bg-slate-200 relative">
                                     <iframe
-                                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4946681007426!2d106.69885661541788!3d10.771594192323946!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f4670702e31%3A0xa5777fb3853f58a6!2zQuG6v24gTmjDoCBSb25n!5e0!3m2!1svi!2s!4v1635000000000!5m2!1svi!2s"
+                                        src={process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4946681007426!2d106.69885661541788!3d10.771594192323946!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f4670702e31%3A0xa5777fb3853f58a6!2zQuG6v24gTmjDoCBSb25n!5e0!3m2!1svi!2s!4v1635000000000!5m2!1svi!2s"}
                                         width="100%"
                                         height="100%"
                                         style={{ border: 0 }}

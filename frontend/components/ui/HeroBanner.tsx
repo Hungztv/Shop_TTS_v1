@@ -126,6 +126,42 @@ export default function HeroBanner() {
                 </>
             )}
 
+            {/* Floating Trust Badges - desktop only */}
+            <div className="hidden lg:block absolute bottom-16 left-0 right-0 z-10 pointer-events-none">
+                <div className="max-w-7xl mx-auto px-8 flex justify-between">
+                    <div className="flex gap-3 pointer-events-auto">
+                        {[
+                            { icon: "🚚", text: "Giao hàng nhanh" },
+                            { icon: "💯", text: "Chính hãng 100%" },
+                        ].map((b, i) => (
+                            <div
+                                key={i}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm font-medium animate-float-slow"
+                                style={{ animationDelay: `${i * 1.5}s`, animationDuration: `${6 + i}s` }}
+                            >
+                                <span>{b.icon}</span>
+                                <span>{b.text}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex gap-3 pointer-events-auto">
+                        {[
+                            { icon: "🔄", text: "Đổi trả 30 ngày" },
+                            { icon: "💳", text: "Thanh toán an toàn" },
+                        ].map((b, i) => (
+                            <div
+                                key={i}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm font-medium animate-float-slow"
+                                style={{ animationDelay: `${(i + 2) * 1.5}s`, animationDuration: `${7 + i}s` }}
+                            >
+                                <span>{b.icon}</span>
+                                <span>{b.text}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             {/* Dots Navigation */}
             {sliders.length > 1 && (
                 <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
