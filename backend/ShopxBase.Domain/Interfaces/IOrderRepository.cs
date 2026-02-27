@@ -32,4 +32,7 @@ public interface IOrderRepository : IRepository<Order>
     Task<int> GetPendingCountAsync();
 
     Task<decimal> GetTotalRevenueAsync(DateTime startDate, DateTime endDate);
+
+    Task<(IEnumerable<Order> items, int total)> GetOrdersByShopAsync(
+        int shopId, int? status, string? search, int pageNumber, int pageSize);
 }

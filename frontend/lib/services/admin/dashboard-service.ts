@@ -155,6 +155,8 @@ export interface OrderDetail {
     productImage: string;
     quantity: number;
     price: number;
+    shopId: number;
+    shopName: string;
 }
 
 export interface Coupon {

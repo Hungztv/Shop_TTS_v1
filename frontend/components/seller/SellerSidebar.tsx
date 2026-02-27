@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     Store,
     Package,
+    ShoppingCart,
     ChevronLeft,
     Menu,
     LogOut,
@@ -18,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const menuItems = [
     { name: 'Thông tin Shop', href: '/seller/shop', icon: Store },
     { name: 'Sản phẩm', href: '/seller/products', icon: Package },
+    { name: 'Đơn hàng', href: '/seller/orders', icon: ShoppingCart },
 ];
 
 export default function SellerSidebar() {

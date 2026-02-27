@@ -17,6 +17,10 @@ namespace ShopxBase.Domain.Entities
 
         public int Quantity { get; set; }
 
+        // Shop Information (snapshot at order time)
+        public int ShopId { get; set; }
+        public string ShopName { get; set; } = string.Empty;
+
         // Foreign Keys
         public int OrderId { get; set; }
         public int ProductId { get; set; }

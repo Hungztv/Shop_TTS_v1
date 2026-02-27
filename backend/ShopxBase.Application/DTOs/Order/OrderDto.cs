@@ -39,6 +39,8 @@ public class OrderDetailDto
     public decimal Price { get; set; }
     public int Quantity { get; set; }
     public decimal Total { get; set; }
+    public int ShopId { get; set; }
+    public string ShopName { get; set; }
 }
 
 /// <summary>

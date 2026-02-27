@@ -170,3 +170,47 @@ export const brandsPublicService = {
         }
     }
 };
+
+// Shop Public Types
+export interface ShopPublic {
+    id: number;
+    name: string;
+    slug: string;
+    description?: string;
+    logoUrl?: string;
+    coverUrl?: string;
+    createdAt: string;
+    totalProducts: number;
+    averageRating: number;
+}
+
+// Shop Public Service
+export const shopsPublicService = {
+    async getBySlug(slug: string): Promise<ShopPublic | null> {
+        try {
+            const res = await axios.get<ApiResponse<ShopPublic>>(`${API_URL}/Shops/slug/${slug}`);
+            return res.data.data;
+        } catch (error) {
+            console.error('Error fetching shop:', error);
+            return null;
+        }
+    },
+
+    async getProducts(shopId: number, params: ProductsQuery = {}): Promise<PaginatedResponse<Product>> {
+        try {
+            const queryParams = new URLSearchParams();
+            if (params.page) queryParams.append('pageNumber', params.page.toString());
+            if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+            if (params.categoryId) queryParams.append('categoryId', params.categoryId.toString());
+            if (params.search) queryParams.append('search', params.search);
+            if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+            if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+
+            const res = await axios.get<ApiResponse<PaginatedResponse<Product>>>(`${API_URL}/Shops/${shopId}/products?${queryParams.toString()}`);
+            return res.data.data || { items: [], totalCount: 0, page: 1, pageSize: 12, totalPages: 0 };
+        } catch (error) {
+            console.error('Error fetching shop products:', error);
+            return { items: [], totalCount: 0, page: 1, pageSize: 12, totalPages: 0 };
+        }
+    }
+};

@@ -106,5 +106,28 @@ namespace ShopxBase.Infrastructure.Data.Repositories
                 .Where(o => o.CreatedAt >= startDate && o.CreatedAt <= endDate && !o.IsDeleted)
                 .SumAsync(o => o.Total);
         }
+
+        public async Task<(IEnumerable<Order> items, int total)> GetOrdersByShopAsync(
+            int shopId, int? status, string? search, int pageNumber, int pageSize)
+        {
+            var query = _dbSet.AsNoTracking()
+                .Include(o => o.OrderDetails)
+                .Where(o => !o.IsDeleted && o.OrderDetails.Any(d => d.ShopId == shopId));
+
+            if (status.HasValue)
+                query = query.Where(o => o.Status == status.Value);
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(o => o.OrderCode.Contains(search) || o.Name.Contains(search));
+
+            var total = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(o => o.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, total);
+        }
     }
 }

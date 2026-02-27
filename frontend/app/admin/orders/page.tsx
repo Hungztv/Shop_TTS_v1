@@ -243,29 +243,54 @@ export default function OrdersPage() {
                             </div>
                         </div>
 
-                        {/* Products */}
+                        {/* Products - Grouped by Shop */}
                         <div>
                             <h4 className="font-semibold mb-3">Sản phẩm</h4>
-                            <div className="space-y-3">
-                                {selectedOrder.orderDetails?.map((item) => (
-                                    <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                                        <img
-                                            src={item.productImage || '/placeholder.png'}
-                                            alt={item.productName}
-                                            className="w-16 h-16 rounded-lg object-cover"
-                                        />
-                                        <div className="flex-1">
-                                            <p className="font-medium">{item.productName}</p>
-                                            <p className="text-sm text-gray-500">
-                                                {formatCurrency(item.price)} x {item.quantity}
-                                            </p>
-                                        </div>
-                                        <p className="font-semibold text-violet-600">
-                                            {formatCurrency(item.price * item.quantity)}
-                                        </p>
+                            {(() => {
+                                const details = selectedOrder.orderDetails || [];
+                                const grouped = details.reduce((acc, item) => {
+                                    const shopName = item.shopName || 'Chưa xác định';
+                                    if (!acc[shopName]) acc[shopName] = [];
+                                    acc[shopName].push(item);
+                                    return acc;
+                                }, {} as Record<string, typeof details>);
+                                const shopNames = Object.keys(grouped);
+
+                                return (
+                                    <div className="space-y-4">
+                                        {shopNames.map((shopName) => (
+                                            <div key={shopName}>
+                                                {shopNames.length > 1 && (
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-lg">🏪</span>
+                                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{shopName}</span>
+                                                    </div>
+                                                )}
+                                                <div className="space-y-2">
+                                                    {grouped[shopName].map((item) => (
+                                                        <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                                                            <img
+                                                                src={item.productImage || '/placeholder.png'}
+                                                                alt={item.productName}
+                                                                className="w-16 h-16 rounded-lg object-cover"
+                                                            />
+                                                            <div className="flex-1">
+                                                                <p className="font-medium">{item.productName}</p>
+                                                                <p className="text-sm text-gray-500">
+                                                                    {formatCurrency(item.price)} x {item.quantity}
+                                                                </p>
+                                                            </div>
+                                                            <p className="font-semibold text-violet-600">
+                                                                {formatCurrency(item.price * item.quantity)}
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                );
+                            })()}
                         </div>
 
                         {/* Summary */}
@@ -320,8 +345,8 @@ export default function OrdersPage() {
                         <label
                             key={key}
                             className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${newStatus === Number(key)
-                                    ? 'bg-violet-50 dark:bg-violet-900/30 border-2 border-violet-500'
-                                    : 'bg-gray-50 dark:bg-gray-700/50 border-2 border-transparent hover:border-gray-300'
+                                ? 'bg-violet-50 dark:bg-violet-900/30 border-2 border-violet-500'
+                                : 'bg-gray-50 dark:bg-gray-700/50 border-2 border-transparent hover:border-gray-300'
                                 }`}
                         >
                             <input

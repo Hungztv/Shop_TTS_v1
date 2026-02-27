@@ -35,6 +35,12 @@ namespace ShopxBase.Infrastructure.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ShopxBaseDbContext).Assembly);
+
+            modelBuilder.Entity<OrderDetail>(entity =>
+            {
+                entity.Property(e => e.ShopId).IsRequired();
+                entity.Property(e => e.ShopName).HasMaxLength(200);
+            });
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

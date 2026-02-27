@@ -126,6 +126,15 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ord
                     CouponCode = request.CouponCode ?? ""
                 };
 
+                // Load shop info for all unique ShopIds (avoid querying same shop multiple times)
+                var shopIds = orderProducts.Select(x => x.product.ShopId).Distinct().ToList();
+                var shopDict = new Dictionary<int, string>();
+                foreach (var sid in shopIds)
+                {
+                    var shop = await _unitOfWork.Shops.GetByIdAsync(sid);
+                    shopDict[sid] = shop?.Name ?? "";
+                }
+
                 // Add OrderDetails
                 foreach (var (product, detail) in orderProducts)
                 {
@@ -136,7 +145,9 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ord
                         ProductImage = product.Image,
                         Price = product.Price,
                         Quantity = detail.Quantity,
-                        OrderCode = orderCode
+                        OrderCode = orderCode,
+                        ShopId = product.ShopId,
+                        ShopName = shopDict.GetValueOrDefault(product.ShopId, "")
                     };
 
                     order.OrderDetails.Add(orderDetail);
