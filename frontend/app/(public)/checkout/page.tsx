@@ -159,6 +159,23 @@ export default function CheckoutPage() {
         })),
       });
 
+      // If MoMo payment, redirect to MoMo
+      if (paymentMethod === "MOMO") {
+        try {
+          const momoResult = await orderService.createMomoPayment(order.id);
+          if (momoResult.payUrl) {
+            await clearAll();
+            window.location.href = momoResult.payUrl;
+            return;
+          } else {
+            toast.error("Không thể tạo link thanh toán MoMo. Đơn hàng đã được tạo, bạn có thể thanh toán sau.");
+          }
+        } catch (momoErr) {
+          console.error("MoMo payment error:", momoErr);
+          toast.error("Lỗi tạo thanh toán MoMo. Đơn hàng đã được tạo, bạn có thể thanh toán sau.");
+        }
+      }
+
       await clearAll();
       toast.success("Đặt hàng thành công!");
       router.push(`/order-success?code=${order.orderCode}`);

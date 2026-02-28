@@ -86,6 +86,23 @@ builder.Configuration["EmailSettings:Password"] = emailPassword;
 builder.Configuration["EmailSettings:DisplayName"] = emailDisplayName;
 builder.Configuration["EmailSettings:EnableSsl"] = emailEnableSsl;
 
+// 3.6 Load MoMo Payment Settings from .env
+var momoPartnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? "MOMO";
+var momoAccessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? "";
+var momoSecretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? "";
+var momoApiUrl = Environment.GetEnvironmentVariable("MOMO_API_URL") ?? "https://test-payment.momo.vn/v2/gateway/api/create";
+var momoReturnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? "http://localhost:3000/payment/momo-callback";
+var momoNotifyUrl = Environment.GetEnvironmentVariable("MOMO_NOTIFY_URL") ?? "http://localhost:5266/api/MomoPayment/ipn";
+var momoRequestType = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE") ?? "payWithMethod";
+
+builder.Configuration["MomoSettings:PartnerCode"] = momoPartnerCode;
+builder.Configuration["MomoSettings:AccessKey"] = momoAccessKey;
+builder.Configuration["MomoSettings:SecretKey"] = momoSecretKey;
+builder.Configuration["MomoSettings:ApiUrl"] = momoApiUrl;
+builder.Configuration["MomoSettings:ReturnUrl"] = momoReturnUrl;
+builder.Configuration["MomoSettings:NotifyUrl"] = momoNotifyUrl;
+builder.Configuration["MomoSettings:RequestType"] = momoRequestType;
+
 // 4. Configure Supabase Settings
 var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL")
     ?? throw new InvalidOperationException("SUPABASE_URL is not set in .env file");
@@ -269,6 +286,12 @@ builder.Services.Configure<ShopxBase.Application.Settings.EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<ShopxBase.Application.Interfaces.IEmailService,
     ShopxBase.Infrastructure.Services.EmailService>();
+
+// Add MoMo Payment Service
+builder.Services.Configure<ShopxBase.Application.Settings.MomoSettings>(
+    builder.Configuration.GetSection("MomoSettings"));
+builder.Services.AddHttpClient<ShopxBase.Application.Interfaces.IMomoPaymentService,
+    ShopxBase.Infrastructure.Services.MomoPaymentService>();
 
 // 11. Add CORS
 builder.Services.AddCors(options =>

@@ -72,6 +72,25 @@ export interface ValidateCouponResult {
   finalAmount: number;
 }
 
+// ==================== MOMO TYPES ====================
+
+export interface MomoPaymentResponse {
+  payUrl: string;
+  qrCodeUrl: string;
+  deeplink: string;
+  orderCode: string;
+  amount: number;
+}
+
+export interface MomoPaymentStatus {
+  orderCode: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  status: number;
+  total: number;
+  isPaid: boolean;
+}
+
 // ==================== ORDER SERVICE ====================
 
 export const orderService = {
@@ -113,6 +132,23 @@ export const orderService = {
     const res = await api.post<ApiResponse<ValidateCouponResult>>(
       "/Coupons/validate",
       { code, orderValue }
+    );
+    return res.data.data;
+  },
+
+  // ==================== MOMO PAYMENT ====================
+
+  async createMomoPayment(orderId: number): Promise<MomoPaymentResponse> {
+    const res = await api.post<ApiResponse<MomoPaymentResponse>>(
+      "/MomoPayment/create",
+      { orderId }
+    );
+    return res.data.data;
+  },
+
+  async checkMomoPaymentStatus(orderCode: string): Promise<MomoPaymentStatus> {
+    const res = await api.get<ApiResponse<MomoPaymentStatus>>(
+      `/MomoPayment/status/${orderCode}`
     );
     return res.data.data;
   },
