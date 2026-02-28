@@ -14,6 +14,7 @@ import {
   type WishlistDto,
   type WishlistSummaryDto,
 } from "@/lib/services/wishlist-service";
+import { trackWishlist } from "@/lib/services/behavior-service";
 
 // ==================== TYPES ====================
 
@@ -77,6 +78,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       if (!isAuthenticated) return false;
       try {
         await wishlistService.addToWishlist(productId);
+        trackWishlist(productId);
         await fetchWishlist();
         return true;
       } catch {

@@ -248,6 +248,10 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<ShopxBase.Infrastructure.Services.IChatBotProductService,
     ShopxBase.Infrastructure.Services.ChatBotProductService>();
 
+// Add User Behavior Service (tracking & personalized recommendations)
+builder.Services.AddScoped<ShopxBase.Infrastructure.Services.IUserBehaviorService,
+    ShopxBase.Infrastructure.Services.UserBehaviorService>();
+
 // Add Gemini Embedding Service (RAG: vector embeddings)
 builder.Services.AddHttpClient<ShopxBase.Infrastructure.Services.IEmbeddingService,
     ShopxBase.Infrastructure.Services.GeminiEmbeddingService>();
@@ -255,6 +259,10 @@ builder.Services.AddHttpClient<ShopxBase.Infrastructure.Services.IEmbeddingServi
 // Add Vector Search Service (RAG: pgvector similarity search)
 builder.Services.AddScoped<ShopxBase.Infrastructure.Services.IVectorSearchService,
     ShopxBase.Infrastructure.Services.VectorSearchService>();
+
+// Add User Behavior Tracking & Recommendation Service
+builder.Services.AddScoped<ShopxBase.Infrastructure.Services.IUserBehaviorService,
+    ShopxBase.Infrastructure.Services.UserBehaviorService>();
 
 // Add Email Service
 builder.Services.Configure<ShopxBase.Application.Settings.EmailSettings>(
@@ -324,6 +332,7 @@ using (var scope = app.Services.CreateScope())
     {
         DbInitializer.SeedRolesAndAdminAsync(services).Wait();
         DataSeeder.SeedSampleDataAsync(app.Services).Wait();
+        ShopDataSeeder.SeedShop8DataAsync(app.Services).Wait();
     }
     catch (Exception ex)
     {

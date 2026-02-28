@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getSessionId } from './behavior-service';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5266/api';
 
@@ -70,6 +71,7 @@ export async function sendChatMessage(
         const res = await axios.post<ChatBotResponse>(`${API_URL}/ChatBot/send`, {
             message,
             history,
+            sessionId: getSessionId(),
         });
         return res.data;
     } catch (error: unknown) {
@@ -107,7 +109,7 @@ export async function streamChatMessage(
         const response = await fetch(`${API_URL}/ChatBot/stream`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, history }),
+            body: JSON.stringify({ message, history, sessionId: getSessionId() }),
             signal,
         });
 
@@ -164,7 +166,7 @@ export async function streamChatMessageV2(
         const response = await fetch(`${API_URL}/ChatBot/stream`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, history }),
+            body: JSON.stringify({ message, history, sessionId: getSessionId() }),
             signal,
         });
 
@@ -177,6 +179,7 @@ export async function streamChatMessageV2(
         const decoder = new TextDecoder();
         let buffer = '';
         let currentEvent = '';
+        let dataLines: string[] = [];
 
         while (true) {
             const { done, value } = await reader.read();
@@ -188,24 +191,48 @@ export async function streamChatMessageV2(
 
             for (const line of lines) {
                 if (line.startsWith('event: ')) {
+                    // If we had pending data from previous event, flush it
+                    if (currentEvent && dataLines.length > 0) {
+                        processSSEvent(currentEvent, dataLines.join('\n'), callbacks);
+                        dataLines = [];
+                    }
                     currentEvent = line.slice(7).trim();
                 } else if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    processSSEvent(currentEvent, data, callbacks);
+                    dataLines.push(line.slice(6));
+                } else if (line.trim() === '') {
+                    // Empty line = end of SSE event, flush accumulated data
+                    if (currentEvent && dataLines.length > 0) {
+                        processSSEvent(currentEvent, dataLines.join('\n'), callbacks);
+                        dataLines = [];
+                    }
                 }
                 // Empty line = end of event (SSE spec)
             }
         }
 
+        // Flush any remaining pending event
+        if (currentEvent && dataLines.length > 0) {
+            processSSEvent(currentEvent, dataLines.join('\n'), callbacks);
+        }
+
         // Process remaining buffer
         if (buffer.trim()) {
             const lines = buffer.split('\n');
+            let remainingEvent = '';
+            const remainingData: string[] = [];
             for (const line of lines) {
                 if (line.startsWith('event: ')) {
-                    currentEvent = line.slice(7).trim();
+                    if (remainingEvent && remainingData.length > 0) {
+                        processSSEvent(remainingEvent, remainingData.join('\n'), callbacks);
+                        remainingData.length = 0;
+                    }
+                    remainingEvent = line.slice(7).trim();
                 } else if (line.startsWith('data: ')) {
-                    processSSEvent(currentEvent, line.slice(6), callbacks);
+                    remainingData.push(line.slice(6));
                 }
+            }
+            if (remainingEvent && remainingData.length > 0) {
+                processSSEvent(remainingEvent, remainingData.join('\n'), callbacks);
             }
         }
     } catch (err) {
@@ -230,7 +257,7 @@ function processSSEvent(event: string, data: string, cb: StreamCallbacks) {
             cb.onIntent(data);
             break;
         case 'clean_reply':
-            cb.onCleanReply(data);
+            try { cb.onCleanReply(JSON.parse(data)); } catch { cb.onCleanReply(data); }
             break;
         case 'done':
             cb.onDone();

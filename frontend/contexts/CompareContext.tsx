@@ -14,6 +14,7 @@ import {
   type CompareItemDto,
   type CompareSummaryDto,
 } from "@/lib/services/compare-service";
+import { trackCompare } from "@/lib/services/behavior-service";
 
 // ==================== TYPES ====================
 
@@ -79,6 +80,7 @@ export function CompareProvider({ children }: { children: ReactNode }) {
       if (!isAuthenticated) return false;
       try {
         await compareService.addToCompare(productId);
+        trackCompare(productId);
         await fetchCompare();
         return true;
       } catch {

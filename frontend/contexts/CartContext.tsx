@@ -14,6 +14,7 @@ import {
   type CartItemDto,
   type CartSummaryDto,
 } from "@/lib/services/cart-service";
+import { trackAddToCart } from "@/lib/services/behavior-service";
 
 // ==================== TYPES ====================
 
@@ -109,6 +110,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       try {
         await cartService.addToCart({ productId, quantity });
+        trackAddToCart(productId);
         await fetchCart(); // reload toàn bộ giỏ
         return true;
       } catch (err) {

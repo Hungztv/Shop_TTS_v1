@@ -24,6 +24,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Shop> Shops { get; }
     IRepository<ShopMember> ShopMembers { get; }
     IRepository<ChatDocument> ChatDocuments { get; }
+    IRepository<UserBehavior> UserBehaviors { get; }
 
     IProductRepository ProductRepository { get; }
     IOrderRepository OrderRepository { get; }

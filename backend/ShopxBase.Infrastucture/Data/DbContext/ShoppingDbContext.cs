@@ -30,6 +30,7 @@ namespace ShopxBase.Infrastructure.Data
         public DbSet<Shop> Shops { get; set; }
         public DbSet<ShopMember> ShopMembers { get; set; }
         public DbSet<ChatDocument> ChatDocuments { get; set; }
+        public DbSet<UserBehavior> UserBehaviors { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -48,6 +49,42 @@ namespace ShopxBase.Infrastructure.Data
             {
                 entity.Property(e => e.Embedding)
                     .HasColumnType("vector(768)");
+            });
+
+            // UserBehavior: indexes for fast recommendation queries
+            modelBuilder.Entity<UserBehavior>(entity =>
+            {
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.SessionId);
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.BehaviorType);
+                entity.HasIndex(e => new { e.UserId, e.BehaviorType });
+                entity.HasIndex(e => new { e.UserId, e.ProductId });
+                entity.HasIndex(e => e.CreatedAt);
+
+                entity.Property(e => e.SearchQuery).HasMaxLength(500);
+                entity.Property(e => e.SourcePage).HasMaxLength(200);
+                entity.Property(e => e.SessionId).HasMaxLength(100);
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Product)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Category)
+                    .WithMany()
+                    .HasForeignKey(e => e.CategoryId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Brand)
+                    .WithMany()
+                    .HasForeignKey(e => e.BrandId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         }
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ShopxBase.Domain.Interfaces;
 using ShopxBase.Infrastructure.Services;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -19,9 +20,18 @@ public class ChatBotController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmbeddingService _embeddingService;
     private readonly IVectorSearchService _vectorSearchService;
+    private readonly IUserBehaviorService _behaviorService;
 
     private const string GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
     private const string MODEL = "llama-3.3-70b-versatile";
+
+    // Fallback models when primary model hits rate limit
+    private static readonly string[] FALLBACK_MODELS = new[]
+    {
+        "llama-3.1-8b-instant",
+        "gemma2-9b-it",
+        "mixtral-8x7b-32768"
+    };
 
     public ChatBotController(
         IHttpClientFactory httpClientFactory,
@@ -30,7 +40,8 @@ public class ChatBotController : ControllerBase
         IChatBotProductService productService,
         IUnitOfWork unitOfWork,
         IEmbeddingService embeddingService,
-        IVectorSearchService vectorSearchService)
+        IVectorSearchService vectorSearchService,
+        IUserBehaviorService behaviorService)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
@@ -39,6 +50,7 @@ public class ChatBotController : ControllerBase
         _unitOfWork = unitOfWork;
         _embeddingService = embeddingService;
         _vectorSearchService = vectorSearchService;
+        _behaviorService = behaviorService;
     }
 
     // ════════════════════════════════════════════════════════════
@@ -96,10 +108,61 @@ public class ChatBotController : ControllerBase
                     extraContext = "Khách hàng muốn SO SÁNH sản phẩm. Hãy so sánh chi tiết CÁC SẢN PHẨM CÓ TRONG DỮ LIỆU (giá, thông số, ưu nhược điểm). CHỈ so sánh sản phẩm có trong dữ liệu.";
                     break;
 
+                case ChatIntent.Recommendation:
+                    var recUserId = GetUserId();
+                    var recProducts = await _behaviorService.GetPersonalizedRecommendationsAsync(recUserId, request.SessionId, 8);
+                    if (recProducts.Any())
+                    {
+                        products = recProducts;
+                        extraContext = "🎯 ĐÂY LÀ SẢN PHẨM ĐƯỢC CÁ NHÂN HÓA dựa trên lịch sử duyệt web, tìm kiếm và mua hàng của khách. " +
+                                      "Hãy giới thiệu chúng một cách TỰ NHIÊN, giải thích TẠI SAO phù hợp với khách (ví dụ: 'Dựa trên sở thích của bạn về thương hiệu X...')";
+                    }
+                    else
+                    {
+                        products = await _productService.GetTrendingProductsAsync(null, 8);
+                        extraContext = "Chưa có đủ dữ liệu cá nhân hóa, đây là sản phẩm phổ biến nhất.";
+                    }
+                    break;
+
                 case ChatIntent.General:
                 default:
                     // Don't search products for general/greeting messages
                     break;
+            }
+
+            // ── Inject user behavior context for all intents ──
+            try
+            {
+                var userId = GetUserId();
+                var behaviorContext = await _behaviorService.GetRecommendationContextAsync(userId, request.SessionId);
+                if (!string.IsNullOrEmpty(behaviorContext))
+                    extraContext = string.IsNullOrEmpty(extraContext)
+                        ? behaviorContext
+                        : $"{extraContext}\n\n{behaviorContext}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get behavior context, continuing without it");
+            }
+
+            // ── Auto-track search queries ──
+            if (intent == ChatIntent.SearchProduct || intent == ChatIntent.PriceRange)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _behaviorService.TrackAsync(new TrackBehaviorRequest
+                        {
+                            UserId = GetUserId(),
+                            SessionId = request.SessionId,
+                            BehaviorType = ShopxBase.Domain.Entities.BehaviorType.Search,
+                            SearchQuery = request.Message,
+                            SourcePage = "chatbot"
+                        });
+                    }
+                    catch { /* fire & forget */ }
+                });
             }
 
             // ── RAG: Embed query → vector search → inject context ──
@@ -112,10 +175,15 @@ public class ChatBotController : ControllerBase
             var categories = await _productService.GetAvailableCategoriesAsync();
             var messages = BuildMessagesWithContext(request, products, categories, extraContext, intent);
 
-            var (response, _) = await CallGroqAsync(apiKey, messages);
+            var (response, errorCode) = await CallGroqAsync(apiKey, messages);
 
             if (response == null)
+            {
+                // If rate limited, return a user-friendly message
+                if (errorCode == "rate_limit_exceeded")
+                    return StatusCode(429, new { success = false, message = "AI đang quá tải, vui lòng thử lại sau 1-2 phút" });
                 return StatusCode(502, new { success = false, message = "Chatbot đang gặp sự cố" });
+            }
 
             var reply = response.Choices?.FirstOrDefault()?.Message?.Content
                 ?? "Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại sau.";
@@ -205,10 +273,60 @@ public class ChatBotController : ControllerBase
                     products = await ComparisonSearchAsync(request.Message);
                     extraContext = "Khách muốn SO SÁNH sản phẩm. CHỈ so sánh sản phẩm có trong dữ liệu.";
                     break;
+                case ChatIntent.Recommendation:
+                    var sRecUserId = GetUserId();
+                    var sRecProducts = await _behaviorService.GetPersonalizedRecommendationsAsync(sRecUserId, request.SessionId, 8);
+                    if (sRecProducts.Any())
+                    {
+                        products = sRecProducts;
+                        extraContext = "🎯 ĐÂY LÀ SẢN PHẨM ĐƯỢC CÁ NHÂN HÓA dựa trên lịch sử duyệt web, tìm kiếm và mua hàng của khách. " +
+                                      "Hãy giới thiệu chúng một cách TỰ NHIÊN, giải thích TẠI SAO phù hợp với khách.";
+                    }
+                    else
+                    {
+                        products = await _productService.GetTrendingProductsAsync(null, 8);
+                        extraContext = "Chưa có đủ dữ liệu cá nhân hóa, đây là sản phẩm phổ biến nhất.";
+                    }
+                    break;
                 case ChatIntent.General:
                 default:
                     // Don't search products for general/greeting messages
                     break;
+            }
+
+            // ── Inject user behavior context for all intents ──
+            try
+            {
+                var sUserId = GetUserId();
+                var sBehaviorCtx = await _behaviorService.GetRecommendationContextAsync(sUserId, request.SessionId);
+                if (!string.IsNullOrEmpty(sBehaviorCtx))
+                    extraContext = string.IsNullOrEmpty(extraContext)
+                        ? sBehaviorCtx
+                        : $"{extraContext}\n\n{sBehaviorCtx}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get behavior context for streaming, continuing without it");
+            }
+
+            // ── Auto-track search queries (streaming) ──
+            if (intent == ChatIntent.SearchProduct || intent == ChatIntent.PriceRange)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _behaviorService.TrackAsync(new TrackBehaviorRequest
+                        {
+                            UserId = GetUserId(),
+                            SessionId = request.SessionId,
+                            BehaviorType = ShopxBase.Domain.Entities.BehaviorType.Search,
+                            SearchQuery = request.Message,
+                            SourcePage = "chatbot"
+                        });
+                    }
+                    catch { /* fire & forget */ }
+                });
             }
 
             // ── RAG: Embed query → vector search → inject context ──
@@ -234,38 +352,70 @@ public class ChatBotController : ControllerBase
             var categories = await _productService.GetAvailableCategoriesAsync();
             var messages = BuildMessagesWithContext(request, products, categories, extraContext, intent);
 
-            var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            client.Timeout = TimeSpan.FromSeconds(45);
+            // Try primary model first, fallback on rate limit
+            var modelsToTry = new List<string> { MODEL };
+            modelsToTry.AddRange(FALLBACK_MODELS);
 
-            var requestBody = new Dictionary<string, object>
+            HttpResponseMessage? httpResponse = null;
+            string? usedModel = null;
+
+            foreach (var model in modelsToTry)
             {
-                ["model"] = MODEL,
-                ["messages"] = messages,
-                ["temperature"] = 0.7,
-                ["max_tokens"] = 2048,
-                ["stream"] = true
-            };
+                var client = _httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Clear();
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                client.Timeout = TimeSpan.FromSeconds(45);
 
-            var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
+                var requestBody = new Dictionary<string, object>
+                {
+                    ["model"] = model,
+                    ["messages"] = messages,
+                    ["temperature"] = 0.7,
+                    ["max_tokens"] = 4096,
+                    ["stream"] = true
+                };
 
-            var httpRequest = new HttpRequestMessage(HttpMethod.Post, GROQ_API_URL)
-            {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
-            };
+                var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                });
 
-            using var httpResponse = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, GROQ_API_URL)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
 
-            if (!httpResponse.IsSuccessStatusCode)
-            {
+                httpResponse = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+
+                if (httpResponse.IsSuccessStatusCode)
+                {
+                    usedModel = model;
+                    if (model != MODEL)
+                        _logger.LogInformation("GROQ stream: Using fallback model {Model}", model);
+                    break;
+                }
+
+                // On rate limit (429), try next model
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    _logger.LogWarning("GROQ stream rate limited on {Model}, trying fallback...", model);
+                    httpResponse.Dispose();
+                    httpResponse = null;
+                    continue;
+                }
+
+                // Other errors — stop and report
                 var errBody = await httpResponse.Content.ReadAsStringAsync();
                 _logger.LogError("GROQ streaming error: {Status} - {Body}", httpResponse.StatusCode, errBody);
                 await WriteSSE("error", JsonSerializer.Serialize(new { message = "AI đang gặp sự cố" }));
+                httpResponse.Dispose();
+                return;
+            }
+
+            if (httpResponse == null || !httpResponse.IsSuccessStatusCode)
+            {
+                await WriteSSE("error", JsonSerializer.Serialize(new { message = "AI đang quá tải, vui lòng thử lại sau 1-2 phút" }));
                 return;
             }
 
@@ -307,7 +457,8 @@ public class ChatBotController : ControllerBase
             var (cleanReply, suggestions) = ExtractSuggestions(fullContent.ToString());
             if (cleanReply != fullContent.ToString())
             {
-                await WriteSSE("clean_reply", cleanReply);
+                // JSON-encode to preserve multiline content in SSE
+                await WriteSSE("clean_reply", JsonSerializer.Serialize(cleanReply));
             }
             if (suggestions.Length > 0)
             {
@@ -519,6 +670,12 @@ public class ChatBotController : ControllerBase
         return key;
     }
 
+    private string? GetUserId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+    }
+
     // ── Intent Detection ──
     private static ChatIntent DetectIntent(string message)
     {
@@ -547,6 +704,10 @@ public class ChatBotController : ControllerBase
         // Comparison
         if (Regex.IsMatch(lower, @"(so sánh|khác gì|hay hơn|tốt hơn|nên mua|compare|vs|versus)"))
             return ChatIntent.Comparison;
+
+        // Personalized recommendation
+        if (Regex.IsMatch(lower, @"(gợi ý cho tôi|đề xuất|phù hợp với tôi|recommend for me|cá nhân|personalize|dành cho tôi|suggest for me|tư vấn cho tôi|hợp với tôi)"))
+            return ChatIntent.Recommendation;
 
         // Product search (default for most queries)
         if (Regex.IsMatch(lower, @"(tìm|mua|cần|muốn|gợi ý|recommend|suggest|giới thiệu|cho tôi|search|sản phẩm|phone|laptop|tai nghe|điện thoại|máy tính|giày|quần|áo)"))
@@ -726,15 +887,25 @@ public class ChatBotController : ControllerBase
     // ── Order context for tracking ──
     private async Task<string> GetOrderContextAsync(string message)
     {
-        // Try to extract order code
-        var codeMatch = Regex.Match(message, @"(ORD-?\d+|[A-Z]{2,4}-?\d{4,})", RegexOptions.IgnoreCase);
+        // Try to extract order code — support ORD-20260228102553-7014, ORD-12345, etc.
+        var codeMatch = Regex.Match(message, @"(ORD[-\s]?[\w-]+)", RegexOptions.IgnoreCase);
+        if (!codeMatch.Success)
+            codeMatch = Regex.Match(message, @"([A-Z]{2,4}[-\s]?\d[\w-]*)", RegexOptions.IgnoreCase);
 
         if (codeMatch.Success)
         {
-            var orderCode = codeMatch.Value.ToUpper();
-            var orders = await _unitOfWork.Orders
-                .FindAsync(o => o.OrderCode.ToUpper() == orderCode);
-            var order = orders.FirstOrDefault();
+            var orderCode = codeMatch.Value.Trim().ToUpper();
+
+            // Use specialized repository for better lookup
+            var order = await _unitOfWork.OrderRepository.GetByCodeAsync(orderCode);
+
+            // Fallback: try contains match if exact match fails
+            if (order == null)
+            {
+                var orders = await _unitOfWork.Orders
+                    .FindAsync(o => o.OrderCode.ToUpper().Contains(orderCode) || orderCode.Contains(o.OrderCode.ToUpper()));
+                order = orders.FirstOrDefault();
+            }
 
             if (order != null)
             {
@@ -748,17 +919,35 @@ public class ChatBotController : ControllerBase
                     _ => "Không xác định"
                 };
 
-                return $@"THÔNG TIN ĐƠN HÀNG TÌM ĐƯỢC:
+                // Load order details (items) if available
+                var orderWithDetails = await _unitOfWork.OrderRepository.GetWithDetailsAsync(order.Id);
+                var itemsInfo = "";
+                if (orderWithDetails?.OrderDetails?.Any() == true)
+                {
+                    var itemLines = orderWithDetails.OrderDetails.Select((d, i) =>
+                        $"  {i + 1}. {d.ProductName} — SL: {d.Quantity} — Giá: {d.Price:N0}đ — Shop: {d.ShopName ?? "N/A"}"
+                    );
+                    itemsInfo = $"\n- Sản phẩm đã đặt:\n{string.Join("\n", itemLines)}";
+                }
+
+                return $@"⚠️ ĐÃ TÌM THẤY ĐƠN HÀNG TRONG HỆ THỐNG — BẮT BUỘC HIỂN THỊ THÔNG TIN NÀY CHO KHÁCH:
 - Mã đơn: {order.OrderCode}
 - Trạng thái: {statusText}
+- Người nhận: {order.Name}
+- SĐT: {order.PhoneNumber}
+- Địa chỉ: {order.Address}
+- Tạm tính: {order.Subtotal:N0}đ
+- Phí vận chuyển: {order.ShippingCost:N0}đ
+- Giảm giá: {order.DiscountAmount:N0}đ{(string.IsNullOrEmpty(order.CouponCode) ? "" : $" (Mã: {order.CouponCode})")}
 - Tổng tiền: {order.Total:N0}đ
 - Thanh toán: {order.PaymentMethod} ({order.PaymentStatus})
-- Địa chỉ: {order.Address}
-- Ngày đặt: {order.CreatedAt:dd/MM/yyyy HH:mm}";
+- Ngày đặt: {order.CreatedAt:dd/MM/yyyy HH:mm}{itemsInfo}
+
+HÃY TRÌNH BÀY THÔNG TIN NÀY MỘT CÁCH ĐẸP MẮT BẰNG MARKDOWN, KHÔNG ĐƯỢC NÓI 'KHÔNG THỂ TRUY CẬP' HAY 'VÌ LÝ DO BẢO MẬT'.";
             }
         }
 
-        return "KHÔNG TÌM THẤY ĐƠN HÀNG. Yêu cầu khách cung cấp mã đơn hàng chính xác (ví dụ: ORD-12345).";
+        return "KHÔNG TÌM THẤY ĐƠN HÀNG VỚI MÃ NÀY. Hãy yêu cầu khách cung cấp lại mã đơn hàng chính xác. Mã đơn thường có dạng ORD-YYYYMMDDHHMMSS-XXXX.";
     }
 
     // ── Coupon context ──
@@ -826,6 +1015,20 @@ public class ChatBotController : ControllerBase
 6. Khi có sản phẩm → giới thiệu rõ: tên, giá, brand, đánh giá, ưu điểm.
 7. Khi so sánh → tạo bảng hoặc list so sánh chi tiết.
 8. Không trả lời ngoài chủ đề mua sắm → nhẹ nhàng chuyển hướng.
+9. LUÔN TRẢ LỜI ĐẦY ĐỦ, CHI TIẾT. Không bao giờ cắt ngắn câu trả lời giữa chừng.
+10. Khi liệt kê các bước → VIẾT ĐẦY ĐỦ NỘI DUNG từng bước, không chỉ liệt kê tiêu đề.
+
+🤖 CÁ NHÂN HÓA:
+- Nếu có phần HÀNH VI NGƯỜI DÙNG trong THÔNG TIN BỔ SUNG, hãy sử dụng thông tin đó để tư vấn phù hợp hơn.
+- Ưu tiên giới thiệu sản phẩm thuộc danh mục/thương hiệu mà khách đã quan tâm.
+- Khi gợi ý cá nhân hóa, giải thích lý do một cách tự nhiên: 'Vì bạn thường xem sản phẩm X...', 'Dựa trên sở thích của bạn...'
+- KHÔNG bao giờ nói rằng bạn đang 'theo dõi' hay 'giám sát' hành vi khách hàng.
+
+🔍 TRA CỨU ĐƠN HÀNG — QUY TẮC ĐẶC BIỆT:
+- Nếu phần THÔNG TIN BỔ SUNG có chứa 'ĐÃ TÌM THẤY ĐƠN HÀNG' → BẮT BUỘC hiển thị TOÀN BỘ thông tin đơn hàng cho khách.
+- TUYỆT ĐỐI KHÔNG nói 'không thể truy cập', 'vì lý do bảo mật', hay 'liên hệ bộ phận hỗ trợ' khi đã có dữ liệu đơn hàng.
+- Trình bày thông tin đơn hàng sạch đẹp bằng Markdown với emoji.
+- Nếu KHÔNG tìm thấy đơn hàng → hướng dẫn khách kiểm tra lại mã đơn.
 
 💡 CUỐI MỖI CÂU TRẢ LỜI, thêm 2-3 gợi ý câu hỏi tiếp theo dạng:
 [suggest]Gợi ý 1[/suggest]
@@ -865,58 +1068,99 @@ public class ChatBotController : ControllerBase
         return (clean.TrimEnd(), suggestions.ToArray());
     }
 
-    // ── GROQ API call ──
+    // ── GROQ API call (with fallback models on rate limit) ──
     private async Task<(GroqResponse? Response, string? ErrorCode)> CallGroqAsync(
-        string apiKey, List<GroqMessage> messages)
+        string apiKey, List<GroqMessage> messages, string? overrideModel = null)
     {
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Clear();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-        client.Timeout = TimeSpan.FromSeconds(45);
-
-        var requestBody = new Dictionary<string, object>
+        var modelsToTry = new List<string>();
+        if (!string.IsNullOrEmpty(overrideModel))
+            modelsToTry.Add(overrideModel);
+        else
         {
-            ["model"] = MODEL,
-            ["messages"] = messages,
-            ["temperature"] = 0.7,
-            ["max_tokens"] = 2048,
-            ["stream"] = false
-        };
+            modelsToTry.Add(MODEL);
+            modelsToTry.AddRange(FALLBACK_MODELS);
+        }
 
-        var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+        string? lastErrorCode = null;
+        string? lastErrorBody = null;
+
+        foreach (var model in modelsToTry)
         {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        });
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            client.Timeout = TimeSpan.FromSeconds(45);
 
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await client.PostAsync(GROQ_API_URL, content);
-        var body = await response.Content.ReadAsStringAsync();
+            var requestBody = new Dictionary<string, object>
+            {
+                ["model"] = model,
+                ["messages"] = messages,
+                ["temperature"] = 0.7,
+                ["max_tokens"] = 4096,
+                ["stream"] = false
+            };
 
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogError("GROQ API error: {Status} - {Body}", response.StatusCode, body);
-            string? errorCode = null;
+            var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(GROQ_API_URL, content);
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonSerializer.Deserialize<GroqResponse>(body, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (model != MODEL)
+                    _logger.LogInformation("GROQ: Used fallback model {Model} (primary was rate-limited)", model);
+
+                return (result, null);
+            }
+
+            // Parse error code
+            lastErrorBody = body;
             try
             {
                 using var errDoc = JsonDocument.Parse(body);
-                errorCode = errDoc.RootElement.GetProperty("error").GetProperty("code").GetString();
+                lastErrorCode = errDoc.RootElement.GetProperty("error").GetProperty("code").GetString();
             }
-            catch { }
-            return (null, errorCode);
+            catch { lastErrorCode = null; }
+
+            // Only retry with fallback on rate limit (429)
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                _logger.LogWarning("GROQ rate limited on model {Model}, trying next fallback...", model);
+                continue;
+            }
+
+            // For other errors, don't try fallback
+            _logger.LogError("GROQ API error: {Status} - {Body}", response.StatusCode, body);
+            return (null, lastErrorCode);
         }
 
-        var result = JsonSerializer.Deserialize<GroqResponse>(body, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        return (result, null);
+        // All models exhausted
+        _logger.LogError("GROQ API: All models rate-limited. Last error: {Body}", lastErrorBody);
+        return (null, lastErrorCode ?? "rate_limit_exceeded");
     }
 
-    // ── SSE helper ──
+    // ── SSE helper ── (multiline-safe: each line gets its own "data: " prefix per SSE spec)
     private async Task WriteSSE(string eventType, string data)
     {
-        await Response.WriteAsync($"event: {eventType}\ndata: {data}\n\n");
+        var sb = new StringBuilder();
+        sb.Append($"event: {eventType}\n");
+        // SSE spec: multiline data must have "data: " prefix per line
+        foreach (var line in data.Split('\n'))
+        {
+            sb.Append($"data: {line}\n");
+        }
+        sb.Append('\n'); // blank line = end of event
+        await Response.WriteAsync(sb.ToString());
         await Response.Body.FlushAsync();
     }
 
@@ -951,13 +1195,15 @@ public enum ChatIntent
     OrderTracking,
     CouponInquiry,
     CategoryBrowse,
-    Comparison
+    Comparison,
+    Recommendation
 }
 
 public class ChatRequest
 {
     public string Message { get; set; } = string.Empty;
     public List<ChatHistoryItem>? History { get; set; }
+    public string? SessionId { get; set; }
 }
 
 public class ChatHistoryItem
