@@ -117,7 +117,7 @@ export default function Footer() {
                             </a>
                             <div className="flex items-start gap-3 text-slate-400">
                                 <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                                <span>123 Đường ABC, Quận 1, TP. Hồ Chí Minh</span>
+                                <span>Hà Nội</span>
                             </div>
                         </div>
                     </div>

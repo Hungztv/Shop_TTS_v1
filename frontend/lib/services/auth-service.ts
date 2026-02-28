@@ -111,6 +111,21 @@ export async function updatePassword(newPassword: string, accessToken: string): 
     }
 }
 
+// Get OAuth URL for provider (Google, GitHub, etc.)
+export async function getOAuthUrl(provider: string, redirectUrl?: string): Promise<{ success: boolean; url?: string; provider?: string; message?: string }> {
+    try {
+        const params = new URLSearchParams();
+        if (redirectUrl) params.set('redirectUrl', redirectUrl);
+        const response = await axios.get(`${API_URL}/SupabaseAuth/oauth/${provider}?${params.toString()}`);
+        return response.data;
+    } catch (error: any) {
+        return {
+            success: false,
+            message: error.response?.data?.message || `OAuth ${provider} thất bại`,
+        };
+    }
+}
+
 export async function getMeWithRoles(accessToken: string): Promise<{ success: boolean; user?: User; appRoles?: string[] }> {
     try {
         const response = await axios.get(`${API_URL}/SupabaseAuth/me/with-roles`, {

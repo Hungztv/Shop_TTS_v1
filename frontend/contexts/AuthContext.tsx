@@ -9,6 +9,8 @@ interface AuthContextType {
     isAuthenticated: boolean;
     signIn: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
     signUp: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; message?: string }>;
+    signInWithOAuth: (provider: string) => Promise<void>;
+    setUserFromTokens: (accessToken: string, refreshToken: string) => Promise<boolean>;
     signOut: () => Promise<void>;
     refreshUserRoles: () => Promise<void>;
 }
@@ -121,6 +123,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         Cookies.remove('refreshToken');
         setUser(null);
     };
+
+    // OAuth Login (Google, GitHub, etc.)
+    const signInWithOAuth = async (provider: string) => {
+        const callbackUrl = `${window.location.origin}/auth/callback`;
+        const result = await authService.getOAuthUrl(provider, callbackUrl);
+        if (result.success && result.url) {
+            window.location.href = result.url;
+        } else {
+            throw new Error(result.message || `Không thể đăng nhập với ${provider}`);
+        }
+    };
+
+    // Set user from tokens (used by OAuth callback)
+    const setUserFromTokens = async (accessToken: string, refreshToken: string): Promise<boolean> => {
+        Cookies.set('supabaseAccessToken', accessToken, { expires: 1 });
+        Cookies.set('refreshToken', refreshToken, { expires: 7 });
+
+        // Get user info and app roles
+        const result = await authService.getMeWithRoles(accessToken);
+        if (result.success && result.user) {
+            // Generate app access token via refresh
+            const refreshResult = await authService.refreshToken(refreshToken);
+            if (refreshResult.success && refreshResult.accessToken) {
+                Cookies.set('accessToken', refreshResult.accessToken, { expires: 1 });
+                if (refreshResult.supabaseAccessToken) {
+                    Cookies.set('supabaseAccessToken', refreshResult.supabaseAccessToken, { expires: 1 });
+                }
+                if (refreshResult.refreshToken) {
+                    Cookies.set('refreshToken', refreshResult.refreshToken, { expires: 7 });
+                }
+            } else {
+                // Use supabase token as fallback
+                Cookies.set('accessToken', accessToken, { expires: 1 });
+            }
+            setUser(normalizeUserRoles(result));
+            return true;
+        }
+        return false;
+    };
     // Refresh roles từ backend (dùng sau khi seller được duyệt)
     const refreshUserRoles = useCallback(async () => {
         // Ưu tiên dùng accessToken (app JWT, validate cục bộ, ko phụ thuộc Supabase)
@@ -153,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
     return (
-        <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, signIn, signUp, signOut, refreshUserRoles }}>
+        <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, signIn, signUp, signInWithOAuth, setUserFromTokens, signOut, refreshUserRoles }}>
             {children}
         </AuthContext.Provider>
     );

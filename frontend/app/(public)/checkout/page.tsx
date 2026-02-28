@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import {
   orderService,
   type ValidateCouponResult,
@@ -80,6 +81,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { cart, fetchCart, clearAll } = useCart();
   const { isAuthenticated, user } = useAuth();
+  const { addNotification } = useNotifications();
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [paymentMethod, setPaymentMethod] = useState<string>("COD");
@@ -177,7 +179,22 @@ export default function CheckoutPage() {
       }
 
       await clearAll();
-      toast.success("Đặt hàng thành công!");
+
+      // Toast notification
+      toast.success("Đặt hàng thành công!", {
+        description: `Mã đơn hàng: ${order.orderCode}`,
+        duration: 5000,
+      });
+
+      // Persistent notification
+      addNotification({
+        type: 'order_placed',
+        title: '🛒 Đặt hàng thành công!',
+        message: `Đơn hàng ${order.orderCode} đã được tạo. Chúng tôi sẽ xử lý trong thời gian sớm nhất.`,
+        orderCode: order.orderCode,
+        link: '/account/orders',
+      });
+
       router.push(`/order-success?code=${order.orderCode}`);
     } catch (err) {
       console.error("Order error:", err);

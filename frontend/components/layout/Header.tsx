@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useCompare } from "@/contexts/CompareContext";
+import NotificationBell from "@/components/layout/NotificationBell";
 import { categoriesService } from "@/lib/services/admin/categories-service";
 import type { Category } from "@/lib/services/admin/dashboard-service";
 
@@ -194,6 +195,9 @@ export default function Header() {
             <button onClick={toggleDarkMode} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Toggle dark mode">
               {isDarkMode ? <Moon className="w-5 h-5 text-violet-400" /> : <Sun className="w-5 h-5 text-amber-500" />}
             </button>
+
+            {/* Notifications */}
+            {isAuthenticated && <NotificationBell />}
 
             {/* Wishlist */}
             <Link href="/account/wishlist" className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">

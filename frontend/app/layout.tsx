@@ -6,8 +6,7 @@ import Footer from "@/components/layout/Footer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
-import { CompareProvider } from "@/contexts/CompareContext";
-import CompareBar from "@/components/ui/CompareBar";
+import { CompareProvider } from "@/contexts/CompareContext";import { NotificationProvider } from '@/contexts/NotificationContext';import CompareBar from "@/components/ui/CompareBar";
 import { Toaster } from "sonner";
 import ChatBotWidget from "@/components/ChatBotWidget";
 
@@ -39,22 +38,24 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <CompareProvider>
-                {children}
-                <CompareBar />
-                <Toaster
-                  position="top-right"
-                  richColors
-                  closeButton
-                  toastOptions={{
-                    duration: 3000,
-                  }}
-                />
-              </CompareProvider>
-            </WishlistProvider>
-          </CartProvider>
+          <NotificationProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <CompareProvider>
+                  {children}
+                  <CompareBar />
+                  <Toaster
+                    position="top-right"
+                    richColors
+                    closeButton
+                    toastOptions={{
+                      duration: 3000,
+                    }}
+                  />
+                </CompareProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </NotificationProvider>
           <ChatBotWidget />
         </AuthProvider>
       </body>
