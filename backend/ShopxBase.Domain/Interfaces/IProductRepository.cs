@@ -20,5 +20,6 @@ public interface IProductRepository : IRepository<Product>
     Task<IEnumerable<Product>> GetBestSellingAsync(int top = 10);
     Task<Product> GetWithRatingsAsync(int id);
     Task<Product> GetWithDetailsAsync(int id);
+    Task<IEnumerable<Product>> GetAllWithDetailsAsync();
     Task<bool> ExistsBySlugAsync(string slug);
 }

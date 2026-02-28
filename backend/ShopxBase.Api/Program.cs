@@ -248,6 +248,14 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<ShopxBase.Infrastructure.Services.IChatBotProductService,
     ShopxBase.Infrastructure.Services.ChatBotProductService>();
 
+// Add Gemini Embedding Service (RAG: vector embeddings)
+builder.Services.AddHttpClient<ShopxBase.Infrastructure.Services.IEmbeddingService,
+    ShopxBase.Infrastructure.Services.GeminiEmbeddingService>();
+
+// Add Vector Search Service (RAG: pgvector similarity search)
+builder.Services.AddScoped<ShopxBase.Infrastructure.Services.IVectorSearchService,
+    ShopxBase.Infrastructure.Services.VectorSearchService>();
+
 // Add Email Service
 builder.Services.Configure<ShopxBase.Application.Settings.EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));

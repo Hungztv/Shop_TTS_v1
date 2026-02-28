@@ -29,6 +29,7 @@ namespace ShopxBase.Infrastructure.Data
         public DbSet<BusinessRegistration> BusinessRegistrations { get; set; }
         public DbSet<Shop> Shops { get; set; }
         public DbSet<ShopMember> ShopMembers { get; set; }
+        public DbSet<ChatDocument> ChatDocuments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -40,6 +41,13 @@ namespace ShopxBase.Infrastructure.Data
             {
                 entity.Property(e => e.ShopId).IsRequired();
                 entity.Property(e => e.ShopName).HasMaxLength(200);
+            });
+
+            // ChatDocument: pgvector embedding column
+            modelBuilder.Entity<ChatDocument>(entity =>
+            {
+                entity.Property(e => e.Embedding)
+                    .HasColumnType("vector(768)");
             });
         }
 

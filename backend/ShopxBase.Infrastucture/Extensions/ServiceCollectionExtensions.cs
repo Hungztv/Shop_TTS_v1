@@ -9,6 +9,7 @@ using ShopxBase.Infrastructure.Services;
 using ShopxBase.Domain.Interfaces;
 using ShopxBase.Domain.Entities;
 using ShopxBase.Application.Interfaces;
+using Pgvector.EntityFrameworkCore;
 
 namespace ShopxBase.Infrastructure.Extensions
 {
@@ -30,7 +31,11 @@ namespace ShopxBase.Infrastructure.Extensions
             // Register DbContext - PostgreSQL (Supabase)
             services.AddDbContext<ShopxBaseDbContext>(options =>
                 options.UseNpgsql(connectionString,
-                    postgresOptions => postgresOptions.CommandTimeout(30)));
+                    postgresOptions =>
+                    {
+                        postgresOptions.CommandTimeout(30);
+                        postgresOptions.UseVector();
+                    }));
 
             // Also register DbContext as abstract type for UnitOfWork injection
             services.AddScoped<DbContext>(sp => sp.GetRequiredService<ShopxBaseDbContext>());

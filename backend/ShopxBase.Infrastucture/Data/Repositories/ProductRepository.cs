@@ -118,5 +118,16 @@ namespace ShopxBase.Infrastructure.Data.Repositories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
         }
+
+        public async Task<IEnumerable<Product>> GetAllWithDetailsAsync()
+        {
+            return await _dbSet
+                .Include(p => p.Brand)
+                .Include(p => p.Category)
+                .Include(p => p.Shop)
+                .Where(p => !p.IsDeleted)
+                .AsNoTracking()
+                .ToListAsync();
+        }
     }
 }

@@ -23,6 +23,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<BusinessRegistration> BusinessRegistrations { get; }
     IRepository<Shop> Shops { get; }
     IRepository<ShopMember> ShopMembers { get; }
+    IRepository<ChatDocument> ChatDocuments { get; }
 
     IProductRepository ProductRepository { get; }
     IOrderRepository OrderRepository { get; }

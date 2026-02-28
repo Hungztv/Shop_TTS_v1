@@ -17,6 +17,8 @@ public class ChatBotController : ControllerBase
     private readonly ILogger<ChatBotController> _logger;
     private readonly IChatBotProductService _productService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IEmbeddingService _embeddingService;
+    private readonly IVectorSearchService _vectorSearchService;
 
     private const string GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
     private const string MODEL = "llama-3.3-70b-versatile";
@@ -26,13 +28,17 @@ public class ChatBotController : ControllerBase
         IConfiguration configuration,
         ILogger<ChatBotController> logger,
         IChatBotProductService productService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IEmbeddingService embeddingService,
+        IVectorSearchService vectorSearchService)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _logger = logger;
         _productService = productService;
         _unitOfWork = unitOfWork;
+        _embeddingService = embeddingService;
+        _vectorSearchService = vectorSearchService;
     }
 
     // ════════════════════════════════════════════════════════════
@@ -95,6 +101,13 @@ public class ChatBotController : ControllerBase
                     // Don't search products for general/greeting messages
                     break;
             }
+
+            // ── RAG: Embed query → vector search → inject context ──
+            var ragContext = await GetRagContextAsync(request.Message);
+            if (!string.IsNullOrEmpty(ragContext))
+                extraContext = string.IsNullOrEmpty(extraContext)
+                    ? ragContext
+                    : $"{extraContext}\n\n{ragContext}";
 
             var categories = await _productService.GetAvailableCategoriesAsync();
             var messages = BuildMessagesWithContext(request, products, categories, extraContext, intent);
@@ -197,6 +210,13 @@ public class ChatBotController : ControllerBase
                     // Don't search products for general/greeting messages
                     break;
             }
+
+            // ── RAG: Embed query → vector search → inject context ──
+            var ragContext = await GetRagContextAsync(request.Message);
+            if (!string.IsNullOrEmpty(ragContext))
+                extraContext = string.IsNullOrEmpty(extraContext)
+                    ? ragContext
+                    : $"{extraContext}\n\n{ragContext}";
 
             // Send products first
             if (products.Any())
@@ -374,9 +394,118 @@ public class ChatBotController : ControllerBase
         }
     }
 
+    // ════════════════════════════════════════════════════════════
+    //  POST /api/ChatBot/index — Index a document for RAG
+    // ════════════════════════════════════════════════════════════
+    [HttpPost("index")]
+    public async Task<IActionResult> IndexDocument([FromBody] IndexDocumentRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Content))
+                return BadRequest(new { success = false, message = "Title và Content không được để trống" });
+
+            var embedding = await _embeddingService.EmbedAsync($"{request.Title}\n{request.Content}");
+            if (embedding == null)
+                return StatusCode(502, new { success = false, message = "Không thể tạo embedding (Gemini API lỗi)" });
+
+            var doc = await _vectorSearchService.IndexDocumentAsync(
+                request.Title, request.Content, request.Source, request.SourceId, embedding);
+
+            return Ok(new { success = true, data = new { id = doc?.Id, title = doc?.Title } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error indexing document");
+            return StatusCode(500, new { success = false, message = "Lỗi khi index document" });
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  POST /api/ChatBot/seed-products — Seed all products into vector DB
+    // ════════════════════════════════════════════════════════════
+    [HttpPost("seed-products")]
+    public async Task<IActionResult> SeedProducts()
+    {
+        try
+        {
+            var products = await _unitOfWork.ProductRepository.GetAllWithDetailsAsync();
+            var documents = products
+                .Where(p => !p.IsDeleted && p.Quantity > 0)
+                .Select(p => new DocumentInput
+                {
+                    Title = p.Name,
+                    Content = $"Sản phẩm: {p.Name}\n" +
+                              $"Giá: {p.Price:N0}đ\n" +
+                              $"Thương hiệu: {p.Brand?.Name ?? "N/A"}\n" +
+                              $"Danh mục: {p.Category?.Name ?? "N/A"}\n" +
+                              $"Shop: {p.Shop?.Name ?? "N/A"}\n" +
+                              $"Đánh giá: {p.AverageScore:F1}/5 ({p.RatingCount} lượt)\n" +
+                              $"Đã bán: {p.SoldOut}\n" +
+                              $"Mô tả: {p.Description?[..Math.Min(p.Description.Length, 500)] ?? "N/A"}",
+                    Source = "product",
+                    SourceId = p.Id
+                });
+
+            var count = await _vectorSearchService.BulkIndexAsync(documents, _embeddingService);
+
+            return Ok(new { success = true, message = $"Đã index {count} sản phẩm vào vector DB" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error seeding products to vector DB");
+            return StatusCode(500, new { success = false, message = "Lỗi khi seed products" });
+        }
+    }
+
     // ══════════════════════════════════════════════════
     //  PRIVATE HELPERS
     // ══════════════════════════════════════════════════
+
+    // ── RAG: Embed query → vector search → return context string ──
+    private async Task<string> GetRagContextAsync(string userMessage)
+    {
+        try
+        {
+            // 1️⃣ Embed the user query using Gemini (RETRIEVAL_QUERY task type)
+            var geminiService = _embeddingService as GeminiEmbeddingService;
+            var queryEmbedding = geminiService != null
+                ? await geminiService.EmbedQueryAsync(userMessage)
+                : await _embeddingService.EmbedAsync(userMessage);
+
+            if (queryEmbedding == null || queryEmbedding.Length == 0)
+            {
+                _logger.LogWarning("RAG: Failed to embed user query, skipping vector search");
+                return "";
+            }
+
+            // 2️⃣ Search Supabase for top 3 closest chunks
+            var results = await _vectorSearchService.SearchAsync(queryEmbedding, topK: 3, threshold: 0.4);
+
+            if (!results.Any())
+            {
+                _logger.LogInformation("RAG: No relevant documents found for query");
+                return "";
+            }
+
+            // 3️⃣ Format results as context for the LLM
+            var contextLines = results.Select((r, i) =>
+                $"[Tài liệu {i + 1}] (Độ liên quan: {r.Similarity:P0})\n" +
+                $"Nguồn: {r.Source ?? "N/A"} | {r.Title}\n" +
+                $"{r.Content}"
+            );
+
+            _logger.LogInformation("RAG: Found {Count} relevant documents (best similarity: {Sim:P0})",
+                results.Count, results.First().Similarity);
+
+            return $"📚 KIẾN THỨC TỪ CƠ SỞ DỮ LIỆU (RAG):\n{string.Join("\n\n", contextLines)}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RAG context retrieval failed");
+            return "";
+        }
+    }
 
     private string? GetApiKey()
     {
@@ -878,4 +1007,12 @@ public class GroqUsage
 
     [JsonPropertyName("total_tokens")]
     public int TotalTokens { get; set; }
+}
+
+public class IndexDocumentRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string? Source { get; set; }
+    public int? SourceId { get; set; }
 }

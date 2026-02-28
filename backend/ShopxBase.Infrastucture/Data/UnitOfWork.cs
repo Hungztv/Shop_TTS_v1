@@ -37,6 +37,7 @@ namespace ShopxBase.Infrastructure.Data
         public IRepository<BusinessRegistration> BusinessRegistrations => GetRepository<BusinessRegistration>();
         public IRepository<Shop> Shops => GetRepository<Shop>();
         public IRepository<ShopMember> ShopMembers => GetRepository<ShopMember>();
+        public IRepository<ChatDocument> ChatDocuments => GetRepository<ChatDocument>();
 
         // Specialized Repositories (Custom Queries)
         private IUserRepository _userRepository;
