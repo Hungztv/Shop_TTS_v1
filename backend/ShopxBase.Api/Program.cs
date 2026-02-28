@@ -299,17 +299,22 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ShopxBase API v1");
-        c.RoutePrefix = string.Empty; // Swagger at root
-    });
-}
 
-app.UseHttpsRedirection(); // Disabled for development (HTTP only)
+// Enable Swagger in all environments (useful for testing on Render)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ShopxBase API v1");
+    c.RoutePrefix = "swagger"; // Swagger at /swagger
+});
+
+// Health check endpoint for Render.com
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowSpecificOrigins");
 
 // Global exception handler - converts domain exceptions to proper HTTP responses

@@ -1,9 +1,9 @@
-# Stage 1: Build với SDK .NET 9 (stable)
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+# Stage 1: Build với SDK .NET 10
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy file solution và project files
-COPY ["Shopping.slnx", "./"]
+COPY ["ShopxBase.slnx", "./"]
 COPY ["ShopxBase.Api/ShopxBase.Api.csproj", "ShopxBase.Api/"]
 COPY ["ShopxBase.Application/ShopxBase.Application.csproj", "ShopxBase.Application/"]
 COPY ["ShopxBase.Domain/ShopxBase.Domain.csproj", "ShopxBase.Domain/"]
@@ -19,8 +19,8 @@ COPY . .
 WORKDIR "/src/ShopxBase.Api"
 RUN dotnet publish "ShopxBase.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# Stage 2: Runtime với ASP.NET 9
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+# Stage 2: Runtime với ASP.NET 10
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 # Render.com sử dụng port 10000 mặc định

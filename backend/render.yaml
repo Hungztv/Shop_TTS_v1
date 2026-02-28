@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: shopx-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore # Gần Việt Nam nhất
+    healthCheckPath: /health
+    envVars:
+      # Supabase Database
+      - key: SUPABASE_HOST
+        sync: false
+      - key: SUPABASE_PORT
+        sync: false
+      - key: SUPABASE_DATABASE
+        sync: false
+      - key: SUPABASE_USER
+        sync: false
+      - key: SUPABASE_PASSWORD
+        sync: false
+      # Supabase Auth
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # JWT
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ISSUER
+        value: ShopxBaseAPI
+      - key: JWT_AUDIENCE
+        value: ShopxBaseClient
+      - key: JWT_EXPIRY_MINUTES
+        value: "60"
+      # Email
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_MAIL
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_DISPLAY_NAME
+        value: ShopX Support
+      - key: EMAIL_ENABLE_SSL
+        value: "true"
+      # GROQ API (ChatBot)
+      - key: GROQ_API_KEY
+        sync: false
+      # Gemini API (Embedding)
+      - key: GEMINI_API_KEY
+        sync: false
