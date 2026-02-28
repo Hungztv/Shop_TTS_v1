@@ -6,8 +6,8 @@ namespace ShopxBase.Application.Features.Orders.Commands.CreateOrder;
 
 public class CreateOrderCommand : IRequest<OrderDto>
 {
-    [Required(ErrorMessage = "User ID is required")]
-    public string UserId { get; set; }
+    /// Set server-side from JWT token - not sent by client
+    public string? UserId { get; set; }
 
     /// Recipient name
     [Required(ErrorMessage = "Recipient name is required")]
@@ -27,10 +27,10 @@ public class CreateOrderCommand : IRequest<OrderDto>
     /// Email
     [EmailAddress(ErrorMessage = "Invalid email format")]
     [MaxLength(100, ErrorMessage = "Email must not exceed 100 characters")]
-    public string Email { get; set; }
+    public string? Email { get; set; }
     /// Additional notes/comments (optional)
     [MaxLength(1000, ErrorMessage = "Notes must not exceed 1000 characters")]
-    public string Note { get; set; }
+    public string? Note { get; set; }
     [Required(ErrorMessage = "Payment method is required")]
     [MaxLength(50, ErrorMessage = "Payment method must not exceed 50 characters")]
     public string PaymentMethod { get; set; }
@@ -39,7 +39,7 @@ public class CreateOrderCommand : IRequest<OrderDto>
     /// Coupon code (optional)
 
     [MaxLength(50, ErrorMessage = "Coupon code must not exceed 50 characters")]
-    public string CouponCode { get; set; }
+    public string? CouponCode { get; set; }
 
 
     /// Order line items (required - minimum 1 item)

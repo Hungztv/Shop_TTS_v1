@@ -9,6 +9,7 @@ namespace ShopxBase.Api.Controllers;
 
 
 [Route("api/shops/me/products")]
+[Authorize(Roles = "Seller,Admin")]
 public class ShopProductsController : BaseApiController
 {
     [HttpGet]

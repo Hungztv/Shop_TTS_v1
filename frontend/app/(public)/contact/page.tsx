@@ -75,7 +75,7 @@ export default function ContactPage() {
     };
 
     const shopInfo = {
-        address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || '123 Đường ABC, Quận 1, TP. Hồ Chí Minh',
+        address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Phường Yên Nghĩa, quận Hà Đông, Hà Nội.',
         phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '1900 1234 56',
         email: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'support@shoptts.vn',
         hours: [

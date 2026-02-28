@@ -153,12 +153,15 @@ export default function SellerProductsPage() {
     };
 
     const handleSubmit = async () => {
-        // Validate
-        if (!form.name.trim()) { toast.error('Tên sản phẩm không được để trống'); return; }
+        // Validate — khớp với backend CreateShopProductCommandValidator
+        if (!form.name.trim() || form.name.trim().length < 4) { toast.error('Tên sản phẩm phải có ít nhất 4 ký tự'); return; }
         if (!form.slug.trim()) { toast.error('Slug không được để trống'); return; }
+        if (!form.description.trim() || form.description.trim().length < 10) { toast.error('Mô tả phải có ít nhất 10 ký tự'); return; }
         if (form.price <= 0) { toast.error('Giá bán phải lớn hơn 0'); return; }
-        if (form.capitalPrice < 0) { toast.error('Giá vốn không hợp lệ'); return; }
+        if (form.capitalPrice <= 0) { toast.error('Giá vốn phải lớn hơn 0'); return; }
+        if (form.capitalPrice >= form.price) { toast.error('Giá vốn phải nhỏ hơn giá bán'); return; }
         if (form.quantity < 0) { toast.error('Số lượng không hợp lệ'); return; }
+        if (!form.image.trim()) { toast.error('Ảnh sản phẩm không được để trống'); return; }
         if (!form.categoryId) { toast.error('Vui lòng chọn danh mục'); return; }
         if (!form.brandId) { toast.error('Vui lòng chọn thương hiệu'); return; }
 
@@ -173,8 +176,20 @@ export default function SellerProductsPage() {
             }
             closeModal();
             fetchProducts();
-        } catch {
-            toast.error(editingProduct ? 'Cập nhật thất bại' : 'Tạo sản phẩm thất bại');
+        } catch (err: unknown) {
+            // Hiển thị lỗi chi tiết từ server nếu có
+            let errorMsg = editingProduct ? 'Cập nhật thất bại' : 'Tạo sản phẩm thất bại';
+            if (err && typeof err === 'object' && 'response' in err) {
+                const axiosErr = err as { response?: { data?: { message?: string; errors?: string[] } } };
+                const serverErrors = axiosErr.response?.data?.errors;
+                const serverMsg = axiosErr.response?.data?.message;
+                if (serverErrors?.length) {
+                    errorMsg = serverErrors.join(', ');
+                } else if (serverMsg) {
+                    errorMsg = serverMsg;
+                }
+            }
+            toast.error(errorMsg);
         } finally {
             setSubmitting(false);
         }

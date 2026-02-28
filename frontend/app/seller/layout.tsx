@@ -1,30 +1,44 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import SellerSidebar from '@/components/seller/SellerSidebar';
 
 export default function SellerLayout({ children }: { children: ReactNode }) {
-    const { user, isAuthenticated, isLoading } = useAuth();
+    const { user, isAuthenticated, isLoading, refreshUserRoles } = useAuth();
     const router = useRouter();
+    const hasRefreshedRoles = useRef(false);
+    const [isRefreshingRoles, setIsRefreshingRoles] = useState(false);
 
     const isSeller = user?.roles?.some(
         (role) => role.toLowerCase() === 'seller' || role.toLowerCase() === 'admin'
     ) ?? false;
 
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
+        // Đang loading hoặc đang refresh roles → chờ
+        if (isLoading || isRefreshingRoles) return;
+
+        if (!isAuthenticated) {
             router.push('/login');
             return;
         }
 
-        if (!isLoading && isAuthenticated && !isSeller) {
+        // Chưa có role Seller → thử refresh 1 lần từ DB
+        if (!isSeller && !hasRefreshedRoles.current) {
+            hasRefreshedRoles.current = true;
+            setIsRefreshingRoles(true);
+            refreshUserRoles().finally(() => setIsRefreshingRoles(false));
+            return;
+        }
+
+        // Sau khi refresh mà vẫn không có Seller → redirect
+        if (!isSeller) {
             router.push('/account');
         }
-    }, [isLoading, isAuthenticated, isSeller, router]);
+    }, [isLoading, isAuthenticated, isSeller, router, refreshUserRoles, isRefreshingRoles]);
 
-    if (isLoading) {
+    if (isLoading || isRefreshingRoles) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
                 <div className="flex flex-col items-center gap-4">

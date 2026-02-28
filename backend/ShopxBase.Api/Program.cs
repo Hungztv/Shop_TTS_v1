@@ -289,6 +289,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection(); // Disabled for development (HTTP only)
 app.UseCors("AllowSpecificOrigins");
 
+// Global exception handler - converts domain exceptions to proper HTTP responses
+app.UseMiddleware<ShopxBase.Api.Middleware.GlobalExceptionHandlerMiddleware>();
+
 app.UseAuthentication();
 
 // Add middleware to inject roles from database into user claims BEFORE authorization

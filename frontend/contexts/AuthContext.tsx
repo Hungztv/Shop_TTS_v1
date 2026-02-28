@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import Cookies from 'js-cookie';
 import type { User } from '@/types/auth';
 import * as authService from '@/lib/services/auth-service';
@@ -16,6 +16,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const normalizeUserRoles = (result: { user?: User; appRoles?: string[] }): User | null => {
+        if (!result.user) return null;
+
+        const normalizedRoles = result.appRoles?.length
+            ? result.appRoles
+            : result.user.roles ?? [];
+
+        return {
+            ...result.user,
+            roles: normalizedRoles,
+        };
+    };
+
     // Khởi tạo: Kiểm tra token, lấy user
     useEffect(() => {
         const initAuth = async () => {
@@ -25,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (accessToken && supabaseAccessToken) {
                 const result = await authService.getMeWithRoles(supabaseAccessToken);
                 if (result.success && result.user) {
-                    setUser(result.user);
+                    setUser(normalizeUserRoles(result));
                 } else {
                     // Token hết hạn, thử refresh
                     const refreshTokenValue = Cookies.get('refreshToken');
@@ -43,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             const retrySupabaseToken = refreshResult.supabaseAccessToken || refreshResult.accessToken;
                             const retryResult = await authService.getMeWithRoles(retrySupabaseToken);
                             if (retryResult.success && retryResult.user) {
-                                setUser(retryResult.user);
+                                setUser(normalizeUserRoles(retryResult));
                             }
                         } else {
                             // Clear cookies
@@ -71,10 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 Cookies.set('refreshToken', result.refreshToken, { expires: 7 }); // 7 ngày
             }
             if (result.user) {
-                if (result.appRoles?.length) {
-                    result.user.roles = result.appRoles;
-                }
-                setUser(result.user);
+                setUser(normalizeUserRoles(result));
             }
         }
 
@@ -93,10 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 Cookies.set('refreshToken', result.refreshToken, { expires: 7 });
             }
             if (result.user) {
-                if (result.appRoles?.length) {
-                    result.user.roles = result.appRoles;
-                }
-                setUser(result.user);
+                setUser(normalizeUserRoles(result));
             }
         }
 
@@ -114,14 +122,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
     // Refresh roles từ backend (dùng sau khi seller được duyệt)
-    const refreshUserRoles = async () => {
-        const supabaseAccessToken = Cookies.get('supabaseAccessToken') || Cookies.get('accessToken');
-        if (!supabaseAccessToken) return;
-        const result = await authService.getMeWithRoles(supabaseAccessToken);
-        if (result.success && result.user) {
-            setUser(result.user);
+    const refreshUserRoles = useCallback(async () => {
+        // Ưu tiên dùng accessToken (app JWT, validate cục bộ, ko phụ thuộc Supabase)
+        const token = Cookies.get('accessToken') || Cookies.get('supabaseAccessToken');
+        if (!token) return;
+
+        let result = await authService.getMeWithRoles(token);
+
+        // Nếu token hết hạn → thử refresh rồi retry
+        if (!result.success) {
+            const refreshTokenValue = Cookies.get('refreshToken');
+            if (refreshTokenValue) {
+                const refreshResult = await authService.refreshToken(refreshTokenValue);
+                if (refreshResult.success && refreshResult.accessToken) {
+                    Cookies.set('accessToken', refreshResult.accessToken, { expires: 1 });
+                    if (refreshResult.supabaseAccessToken) {
+                        Cookies.set('supabaseAccessToken', refreshResult.supabaseAccessToken, { expires: 1 });
+                    }
+                    if (refreshResult.refreshToken) {
+                        Cookies.set('refreshToken', refreshResult.refreshToken, { expires: 7 });
+                    }
+                    // Retry với token mới
+                    result = await authService.getMeWithRoles(refreshResult.accessToken);
+                }
+            }
         }
-    };
+
+        if (result.success && result.user) {
+            setUser(normalizeUserRoles(result));
+        }
+    }, []);
     return (
         <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, signIn, signUp, signOut, refreshUserRoles }}>
             {children}

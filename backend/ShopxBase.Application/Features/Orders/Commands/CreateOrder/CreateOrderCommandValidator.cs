@@ -92,7 +92,7 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 
     private static bool IsValidPaymentMethod(string paymentMethod)
     {
-        var validMethods = new[] { "COD", "MoMo", "VnPay", "Paypal" };
+        var validMethods = new[] { "COD", "BANK_TRANSFER", "MOMO", "MoMo", "VnPay", "Paypal" };
         return !string.IsNullOrEmpty(paymentMethod) &&
                validMethods.Contains(paymentMethod, StringComparer.OrdinalIgnoreCase);
     }

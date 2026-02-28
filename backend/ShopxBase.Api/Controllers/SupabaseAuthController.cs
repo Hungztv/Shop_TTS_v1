@@ -193,7 +193,7 @@ public class SupabaseAuthController : ControllerBase
     /// </summary>
     [HttpPost("signout")]
     [Authorize]
-    public async Task<IActionResult> SignOut()
+    public async Task<IActionResult> SignOutUser()
     {
         var accessToken = GetAccessToken();
         if (string.IsNullOrEmpty(accessToken))
