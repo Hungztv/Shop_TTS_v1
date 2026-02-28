@@ -51,6 +51,19 @@ export default function OrdersPage() {
         });
     };
 
+    const getOrderProductsSummary = (order: Order): string => {
+        if (!order.orderDetails || order.orderDetails.length === 0) {
+            return 'Chưa có thông tin sản phẩm';
+        }
+
+        const [firstItem, ...restItems] = order.orderDetails;
+        if (restItems.length === 0) {
+            return firstItem.productName;
+        }
+
+        return `${firstItem.productName} +${restItems.length} sản phẩm`;
+    };
+
     if (loading) {
         return (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 flex items-center justify-center min-h-[400px]">
@@ -119,6 +132,9 @@ export default function OrdersPage() {
                                             </div>
                                             <div>
                                                 <p className="font-semibold text-slate-800">{order.orderCode}</p>
+                                                <p className="text-sm text-slate-600 truncate max-w-[280px] sm:max-w-[360px]">
+                                                    Sản phẩm: {getOrderProductsSummary(order)}
+                                                </p>
                                                 <p className="text-sm text-slate-500">{formatDate(order.createdAt)}</p>
                                             </div>
                                         </div>

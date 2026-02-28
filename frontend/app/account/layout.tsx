@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Package, Settings, LogOut, ChevronRight, Store } from 'lucide-react';
+import { User, Package, Settings, LogOut, ChevronRight, Store, House } from 'lucide-react';
 
 const menuItems = [
     { href: '/account', label: 'Tài khoản', icon: User, exact: true },
@@ -46,9 +46,18 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
         <div className="min-h-screen bg-slate-50">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-800">Tài khoản của tôi</h1>
-                    <p className="text-slate-500 mt-1">Xin chào, {user?.metadata?.full_name || user?.email}</p>
+                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-800">Tài khoản của tôi</h1>
+                        <p className="text-slate-500 mt-1">Xin chào, {user?.metadata?.full_name || user?.email}</p>
+                    </div>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                    >
+                        <House className="w-4 h-4" />
+                        Về trang chủ
+                    </Link>
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8">
