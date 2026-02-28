@@ -48,24 +48,24 @@ export default function HeroBanner() {
     // Loading skeleton
     if (loading) {
         return (
-            <section className="relative w-full aspect-[21/9] md:aspect-[21/8] lg:aspect-[21/7] bg-gradient-to-r from-slate-200 to-slate-300 animate-pulse" />
+            <section className="relative w-full h-[clamp(160px,30vw,320px)] bg-gradient-to-r from-slate-200 to-slate-300 animate-pulse" />
         );
     }
 
     // No sliders — fallback
     if (sliders.length === 0) {
         return (
-            <section className="relative w-full aspect-[21/9] md:aspect-[21/8] lg:aspect-[21/7] gradient-hero flex items-center justify-center">
+            <section className="relative w-full h-[clamp(160px,30vw,320px)] gradient-hero flex items-center justify-center">
                 <div className="text-center text-white px-4">
-                    <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold mb-4">
+                    <h1 className="text-2xl md:text-4xl lg:text-5xl font-extrabold mb-3">
                         Chào mừng đến với Shop TTS
                     </h1>
-                    <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto">
+                    <p className="text-base md:text-lg text-white/80 mb-5 max-w-2xl mx-auto">
                         Hàng ngàn sản phẩm chính hãng với mức giá ưu đãi
                     </p>
                     <Link
                         href="/products"
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-white text-violet-600 rounded-xl font-semibold hover:bg-violet-50 transition-colors text-lg"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-white text-violet-600 rounded-xl font-semibold hover:bg-violet-50 transition-colors text-base"
                     >
                         Mua sắm ngay
                     </Link>
@@ -75,7 +75,7 @@ export default function HeroBanner() {
     }
 
     return (
-        <section className="relative w-full aspect-[21/9] md:aspect-[21/8] lg:aspect-[21/7] overflow-hidden bg-black">
+        <section className="relative w-full h-[clamp(160px,30vw,320px)] overflow-hidden bg-black group">
             {/* Slides */}
             {sliders.map((slider, index) => (
                 <div
@@ -127,38 +127,22 @@ export default function HeroBanner() {
             )}
 
             {/* Floating Trust Badges - desktop only */}
-            <div className="hidden lg:block absolute bottom-16 left-0 right-0 z-10 pointer-events-none">
-                <div className="max-w-7xl mx-auto px-8 flex justify-between">
-                    <div className="flex gap-3 pointer-events-auto">
-                        {[
-                            { icon: "🚚", text: "Giao hàng nhanh" },
-                            { icon: "💯", text: "Chính hãng 100%" },
-                        ].map((b, i) => (
-                            <div
-                                key={i}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm font-medium animate-float-slow"
-                                style={{ animationDelay: `${i * 1.5}s`, animationDuration: `${6 + i}s` }}
-                            >
-                                <span>{b.icon}</span>
-                                <span>{b.text}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex gap-3 pointer-events-auto">
-                        {[
-                            { icon: "🔄", text: "Đổi trả 30 ngày" },
-                            { icon: "💳", text: "Thanh toán an toàn" },
-                        ].map((b, i) => (
-                            <div
-                                key={i}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm font-medium animate-float-slow"
-                                style={{ animationDelay: `${(i + 2) * 1.5}s`, animationDuration: `${7 + i}s` }}
-                            >
-                                <span>{b.icon}</span>
-                                <span>{b.text}</span>
-                            </div>
-                        ))}
-                    </div>
+            <div className="hidden xl:block absolute bottom-10 left-0 right-0 z-10 pointer-events-none">
+                <div className="max-w-7xl mx-auto px-8 flex justify-center gap-4">
+                    {[
+                        { icon: "🚚", text: "Giao hàng nhanh" },
+                        { icon: "💯", text: "Chính hãng 100%" },
+                        { icon: "🔄", text: "Đổi trả 30 ngày" },
+                        { icon: "💳", text: "Thanh toán an toàn" },
+                    ].map((b, i) => (
+                        <div
+                            key={i}
+                            className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-xs font-medium pointer-events-auto"
+                        >
+                            <span>{b.icon}</span>
+                            <span>{b.text}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
