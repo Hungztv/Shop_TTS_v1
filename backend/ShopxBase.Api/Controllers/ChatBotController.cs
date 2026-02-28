@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using ShopxBase.Domain.Interfaces;
+using ShopxBase.Infrastructure.Services;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace ShopxBase.Api.Controllers;
 
@@ -12,127 +15,112 @@ public class ChatBotController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ChatBotController> _logger;
+    private readonly IChatBotProductService _productService;
+    private readonly IUnitOfWork _unitOfWork;
 
     private const string GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+    private const string MODEL = "llama-3.3-70b-versatile";
 
     public ChatBotController(
         IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
-        ILogger<ChatBotController> logger)
+        ILogger<ChatBotController> logger,
+        IChatBotProductService productService,
+        IUnitOfWork unitOfWork)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _logger = logger;
+        _productService = productService;
+        _unitOfWork = unitOfWork;
     }
 
-    /// <summary>
-    /// Gửi tin nhắn đến AI ChatBot (GROQ API)
-    /// </summary>
+    // ════════════════════════════════════════════════════════════
+    //  POST /api/ChatBot/send — Main chat endpoint (non-streaming)
+    // ════════════════════════════════════════════════════════════
     [HttpPost("send")]
     public async Task<IActionResult> SendMessage([FromBody] ChatRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Message))
             return BadRequest(new { success = false, message = "Tin nhắn không được để trống" });
 
-        var apiKey = Environment.GetEnvironmentVariable("GROQ_API_KEY")
-            ?? _configuration["Groq:ApiKey"];
-
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            _logger.LogError("GROQ_API_KEY is not configured");
+        var apiKey = GetApiKey();
+        if (apiKey == null)
             return StatusCode(500, new { success = false, message = "ChatBot chưa được cấu hình" });
-        }
 
         try
         {
-            var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            // ── Intent detection + smart search ──
+            var intent = DetectIntent(request.Message);
+            var products = new List<ChatProductInfo>();
+            var extraContext = "";
 
-            // Xây dựng danh sách messages gửi lên GROQ
-            var messages = new List<GroqMessage>
+            switch (intent)
             {
-                new()
-                {
-                    Role = "system",
-                    Content = """
-                        Bạn là trợ lý AI của ShopTTS - nền tảng thương mại điện tử hàng đầu Việt Nam.
-                        Nhiệm vụ của bạn:
-                        - Hỗ trợ khách hàng tìm kiếm sản phẩm, giải đáp thắc mắc về đơn hàng, thanh toán, vận chuyển.
-                        - Trả lời ngắn gọn, thân thiện, chuyên nghiệp bằng tiếng Việt.
-                        - Nếu không biết câu trả lời, hãy gợi ý liên hệ hotline hoặc email hỗ trợ.
-                        - Không trả lời những câu hỏi không liên quan đến mua sắm/thương mại điện tử.
-                        - Sử dụng emoji phù hợp để tạo cảm giác thân thiện.
-                        
-                        Thông tin hỗ trợ:
-                        - Hotline: 1900-xxxx
-                        - Email: support@shoptts.vn
-                        - Giờ làm việc: 8:00 - 22:00 hàng ngày
-                        """
-                }
-            };
+                case ChatIntent.SearchProduct:
+                    products = await SmartSearchAsync(request.Message);
+                    break;
 
-            // Thêm lịch sử hội thoại (nếu có)
-            if (request.History != null && request.History.Count > 0)
-            {
-                foreach (var msg in request.History.TakeLast(10)) // Giới hạn 10 tin cuối
-                {
-                    messages.Add(new GroqMessage
-                    {
-                        Role = msg.Role,
-                        Content = msg.Content
-                    });
-                }
+                case ChatIntent.PriceRange:
+                    var (min, max) = ExtractPriceRange(request.Message);
+                    products = await _productService.GetProductsByPriceRangeAsync(min, max, null, 8);
+                    if (!products.Any())
+                        products = await SmartSearchAsync(request.Message);
+                    break;
+
+                case ChatIntent.Trending:
+                    products = await _productService.GetTrendingProductsAsync(null, 8);
+                    break;
+
+                case ChatIntent.OrderTracking:
+                    extraContext = await GetOrderContextAsync(request.Message);
+                    break;
+
+                case ChatIntent.CouponInquiry:
+                    extraContext = await GetCouponContextAsync();
+                    break;
+
+                case ChatIntent.CategoryBrowse:
+                    var cats = await _productService.GetAvailableCategoriesAsync();
+                    extraContext = $"DANH MỤC SẢN PHẨM CÓ SẴN ({cats.Count} danh mục): {string.Join(", ", cats)}";
+                    break;
+
+                case ChatIntent.Comparison:
+                    products = await ComparisonSearchAsync(request.Message);
+                    extraContext = "Khách hàng muốn SO SÁNH sản phẩm. Hãy so sánh chi tiết CÁC SẢN PHẨM CÓ TRONG DỮ LIỆU (giá, thông số, ưu nhược điểm). CHỈ so sánh sản phẩm có trong dữ liệu.";
+                    break;
+
+                case ChatIntent.General:
+                default:
+                    // Don't search products for general/greeting messages
+                    break;
             }
 
-            // Thêm tin nhắn hiện tại
-            messages.Add(new GroqMessage { Role = "user", Content = request.Message });
+            var categories = await _productService.GetAvailableCategoriesAsync();
+            var messages = BuildMessagesWithContext(request, products, categories, extraContext, intent);
 
-            var groqRequest = new
-            {
-                model = "llama-3.3-70b-versatile",
-                messages,
-                temperature = 0.7,
-                max_completion_tokens = 1024,
-                top_p = 1,
-                stream = false
-            };
+            var (response, _) = await CallGroqAsync(apiKey, messages);
 
-            var json = JsonSerializer.Serialize(groqRequest, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            if (response == null)
+                return StatusCode(502, new { success = false, message = "Chatbot đang gặp sự cố" });
 
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await client.PostAsync(GROQ_API_URL, content);
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("GROQ API error: {StatusCode} - {Body}", response.StatusCode, responseBody);
-                return StatusCode(502, new
-                {
-                    success = false,
-                    message = "Chatbot đang gặp sự cố, vui lòng thử lại sau"
-                });
-            }
-
-            var groqResponse = JsonSerializer.Deserialize<GroqResponse>(responseBody, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            var reply = groqResponse?.Choices?.FirstOrDefault()?.Message?.Content
+            var reply = response.Choices?.FirstOrDefault()?.Message?.Content
                 ?? "Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại sau.";
+
+            // Extract suggested follow-ups from AI response
+            var (cleanReply, suggestions) = ExtractSuggestions(reply);
 
             return Ok(new
             {
                 success = true,
                 data = new
                 {
-                    reply,
-                    model = groqResponse?.Model ?? "unknown",
-                    usage = groqResponse?.Usage
+                    reply = cleanReply,
+                    products = products.Select(MapProductResponse),
+                    suggestions,
+                    intent = intent.ToString(),
+                    model = response.Model ?? MODEL,
+                    usage = response.Usage
                 }
             });
         }
@@ -142,13 +130,700 @@ public class ChatBotController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling GROQ API");
+            _logger.LogError(ex, "Error in ChatBot SendMessage");
             return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi xử lý tin nhắn" });
         }
     }
+
+    // ════════════════════════════════════════════════════════════
+    //  POST /api/ChatBot/stream — Streaming response (SSE)
+    // ════════════════════════════════════════════════════════════
+    [HttpPost("stream")]
+    public async Task StreamMessage([FromBody] ChatRequest request)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Connection = "keep-alive";
+
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            await WriteSSE("error", JsonSerializer.Serialize(new { message = "Tin nhắn không được để trống" }));
+            return;
+        }
+
+        var apiKey = GetApiKey();
+        if (apiKey == null)
+        {
+            await WriteSSE("error", JsonSerializer.Serialize(new { message = "ChatBot chưa được cấu hình" }));
+            return;
+        }
+
+        try
+        {
+            // ── Pre-search products ──
+            var intent = DetectIntent(request.Message);
+            var products = new List<ChatProductInfo>();
+            var extraContext = "";
+
+            switch (intent)
+            {
+                case ChatIntent.SearchProduct:
+                    products = await SmartSearchAsync(request.Message);
+                    break;
+                case ChatIntent.PriceRange:
+                    var (min, max) = ExtractPriceRange(request.Message);
+                    products = await _productService.GetProductsByPriceRangeAsync(min, max, null, 8);
+                    if (!products.Any()) products = await SmartSearchAsync(request.Message);
+                    break;
+                case ChatIntent.Trending:
+                    products = await _productService.GetTrendingProductsAsync(null, 8);
+                    break;
+                case ChatIntent.OrderTracking:
+                    extraContext = await GetOrderContextAsync(request.Message);
+                    break;
+                case ChatIntent.CouponInquiry:
+                    extraContext = await GetCouponContextAsync();
+                    break;
+                case ChatIntent.CategoryBrowse:
+                    var cats = await _productService.GetAvailableCategoriesAsync();
+                    extraContext = $"DANH MỤC: {string.Join(", ", cats)}";
+                    break;
+                case ChatIntent.Comparison:
+                    products = await ComparisonSearchAsync(request.Message);
+                    extraContext = "Khách muốn SO SÁNH sản phẩm. CHỈ so sánh sản phẩm có trong dữ liệu.";
+                    break;
+                case ChatIntent.General:
+                default:
+                    // Don't search products for general/greeting messages
+                    break;
+            }
+
+            // Send products first
+            if (products.Any())
+            {
+                await WriteSSE("products", JsonSerializer.Serialize(
+                    products.Select(MapProductResponse),
+                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
+                ));
+            }
+
+            // Send intent
+            await WriteSSE("intent", intent.ToString());
+
+            // Stream AI response
+            var categories = await _productService.GetAvailableCategoriesAsync();
+            var messages = BuildMessagesWithContext(request, products, categories, extraContext, intent);
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            client.Timeout = TimeSpan.FromSeconds(45);
+
+            var requestBody = new Dictionary<string, object>
+            {
+                ["model"] = MODEL,
+                ["messages"] = messages,
+                ["temperature"] = 0.7,
+                ["max_tokens"] = 2048,
+                ["stream"] = true
+            };
+
+            var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, GROQ_API_URL)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            using var httpResponse = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                var errBody = await httpResponse.Content.ReadAsStringAsync();
+                _logger.LogError("GROQ streaming error: {Status} - {Body}", httpResponse.StatusCode, errBody);
+                await WriteSSE("error", JsonSerializer.Serialize(new { message = "AI đang gặp sự cố" }));
+                return;
+            }
+
+            using var stream = await httpResponse.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+
+            var fullContent = new StringBuilder();
+
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrEmpty(line)) continue;
+                if (!line.StartsWith("data: ")) continue;
+
+                var data = line["data: ".Length..];
+                if (data == "[DONE]") break;
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(data);
+                    var delta = doc.RootElement
+                        .GetProperty("choices")[0]
+                        .GetProperty("delta");
+
+                    if (delta.TryGetProperty("content", out var contentProp))
+                    {
+                        var chunk = contentProp.GetString();
+                        if (!string.IsNullOrEmpty(chunk))
+                        {
+                            fullContent.Append(chunk);
+                            await WriteSSE("token", chunk);
+                        }
+                    }
+                }
+                catch { /* skip malformed chunks */ }
+            }
+
+            // Extract suggestions from full response
+            var (cleanReply, suggestions) = ExtractSuggestions(fullContent.ToString());
+            if (cleanReply != fullContent.ToString())
+            {
+                await WriteSSE("clean_reply", cleanReply);
+            }
+            if (suggestions.Length > 0)
+            {
+                await WriteSSE("suggestions", JsonSerializer.Serialize(suggestions));
+            }
+
+            await WriteSSE("done", "{}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in ChatBot StreamMessage");
+            await WriteSSE("error", JsonSerializer.Serialize(new { message = "Đã xảy ra lỗi" }));
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  GET /api/ChatBot/recommend/{productId}
+    // ════════════════════════════════════════════════════════════
+    [HttpGet("recommend/{productId:int}")]
+    public async Task<IActionResult> GetRecommendations(int productId)
+    {
+        try
+        {
+            var similar = await _productService.GetSimilarProductsAsync(productId, 8);
+            return Ok(new { success = true, data = similar.Select(MapProductResponse) });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting recommendations for product {ProductId}", productId);
+            return StatusCode(500, new { success = false, message = "Không thể lấy gợi ý sản phẩm" });
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  GET /api/ChatBot/trending
+    // ════════════════════════════════════════════════════════════
+    [HttpGet("trending")]
+    public async Task<IActionResult> GetTrending([FromQuery] int limit = 8)
+    {
+        try
+        {
+            var trending = await _productService.GetTrendingProductsAsync(null, limit);
+            return Ok(new { success = true, data = trending.Select(MapProductResponse) });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting trending products");
+            return StatusCode(500, new { success = false, message = "Không thể lấy sản phẩm trending" });
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  GET /api/ChatBot/coupons — Active coupons
+    // ════════════════════════════════════════════════════════════
+    [HttpGet("coupons")]
+    public async Task<IActionResult> GetActiveCoupons()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var coupons = await _unitOfWork.Coupons
+                .FindAsync(c => !c.IsDeleted && c.DateStart <= now && c.DateExpired >= now
+                    && c.Quantity > c.UsedCount && c.Status == 1);
+
+            return Ok(new
+            {
+                success = true,
+                data = coupons.Select(c => new
+                {
+                    c.Code,
+                    c.Name,
+                    c.Description,
+                    discount = c.IsPercent ? $"{c.DiscountValue}%" : $"{c.DiscountValue:N0}đ",
+                    minOrder = c.MinimumOrderValue,
+                    expiresAt = c.DateExpired,
+                    remaining = c.Quantity - c.UsedCount
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting active coupons");
+            return StatusCode(500, new { success = false, message = "Không thể lấy mã giảm giá" });
+        }
+    }
+
+    // ══════════════════════════════════════════════════
+    //  PRIVATE HELPERS
+    // ══════════════════════════════════════════════════
+
+    private string? GetApiKey()
+    {
+        var key = Environment.GetEnvironmentVariable("GROQ_API_KEY")
+            ?? _configuration["Groq:ApiKey"];
+        if (string.IsNullOrEmpty(key))
+        {
+            _logger.LogError("GROQ_API_KEY is not configured");
+            return null;
+        }
+        return key;
+    }
+
+    // ── Intent Detection ──
+    private static ChatIntent DetectIntent(string message)
+    {
+        var lower = message.ToLower().Trim();
+
+        // Order tracking
+        if (Regex.IsMatch(lower, @"(đơn hàng|order|tracking|theo dõi|đã đặt|tình trạng đơn|mã đơn|tra cứu đơn|kiểm tra đơn|don hang)"))
+            return ChatIntent.OrderTracking;
+
+        // Coupon
+        if (Regex.IsMatch(lower, @"(mã giảm|coupon|voucher|khuyến mãi|giảm giá|mã code|discount|ưu đãi)"))
+            return ChatIntent.CouponInquiry;
+
+        // Price range
+        if (Regex.IsMatch(lower, @"(tầm giá|khoảng giá|dưới \d|trên \d|từ \d.*đến|budget|ngân sách|giá từ|rẻ nhất|đắt nhất|bao nhiêu tiền|triệu|tầm \d)"))
+            return ChatIntent.PriceRange;
+
+        // Trending
+        if (Regex.IsMatch(lower, @"(bán chạy|trending|phổ biến|hot|best seller|nhiều người mua|nổi bật|xu hướng|được yêu thích)"))
+            return ChatIntent.Trending;
+
+        // Category browse
+        if (Regex.IsMatch(lower, @"(danh mục|loại sản phẩm|có những gì|bán gì|categories|chủng loại|phân loại)"))
+            return ChatIntent.CategoryBrowse;
+
+        // Comparison
+        if (Regex.IsMatch(lower, @"(so sánh|khác gì|hay hơn|tốt hơn|nên mua|compare|vs|versus)"))
+            return ChatIntent.Comparison;
+
+        // Product search (default for most queries)
+        if (Regex.IsMatch(lower, @"(tìm|mua|cần|muốn|gợi ý|recommend|suggest|giới thiệu|cho tôi|search|sản phẩm|phone|laptop|tai nghe|điện thoại|máy tính|giày|quần|áo)"))
+            return ChatIntent.SearchProduct;
+
+        return ChatIntent.General;
+    }
+
+    // ── Comparison Search: extract product names and search each separately ──
+    private async Task<List<ChatProductInfo>> ComparisonSearchAsync(string message)
+    {
+        var productNames = ExtractProductNamesForComparison(message);
+        var allProducts = new List<ChatProductInfo>();
+
+        foreach (var name in productNames)
+        {
+            var results = await _productService.SearchProductsAsync(name, 3);
+            allProducts.AddRange(results);
+        }
+
+        // Deduplicate by Id
+        return allProducts
+            .GroupBy(p => p.Id)
+            .Select(g => g.First())
+            .Take(8)
+            .ToList();
+    }
+
+    // Extract actual product/brand names from comparison queries
+    private static List<string> ExtractProductNamesForComparison(string message)
+    {
+        var lower = message.ToLower();
+        var names = new List<string>();
+
+        // Remove comparison stop words
+        var comparisonWords = new HashSet<string>
+        {
+            "so", "sánh", "sanh", "khác", "khac", "gì", "gi", "hay", "hơn",
+            "hon", "tốt", "tot", "nên", "nen", "mua", "với", "voi", "và", "va",
+            "vs", "versus", "compare", "giữa", "giua", "cho", "tôi", "toi",
+            "được", "duoc", "không", "khong", "có", "co", "the", "thế", "nào",
+            "nao", "bạn", "ban", "ơi", "oi", "đi", "di", "xem", "thử", "thu",
+            "giùm", "gium", "hộ", "ho", "cái", "cai", "chiếc", "chiec",
+            "điện", "dien", "thoại", "thoai", "máy", "may"
+        };
+
+        // Split by common separators: "và", "vs", "với", "hay", ","
+        var parts = Regex.Split(lower, @"\b(?:và|vs|versus|với|hay|hoặc)\b|,")
+            .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .ToList();
+
+        foreach (var part in parts)
+        {
+            // Clean each part by removing comparison stop words
+            var words = part.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Where(w => !comparisonWords.Contains(w) && w.Length >= 2)
+                .ToList();
+
+            if (words.Count > 0)
+            {
+                var cleaned = string.Join(" ", words);
+                if (cleaned.Length >= 2)
+                    names.Add(cleaned);
+            }
+        }
+
+        // Fallback: if nothing extracted, try the whole message cleaned
+        if (!names.Any())
+        {
+            var fallback = RemoveStopWords(lower);
+            if (!string.IsNullOrWhiteSpace(fallback))
+                names.Add(fallback);
+        }
+
+        return names.Distinct().ToList();
+    }
+
+    // ── Smart Search: extract keywords, brand, category, price from natural language ──
+    private async Task<List<ChatProductInfo>> SmartSearchAsync(string message)
+    {
+        var products = await _productService.SearchProductsAsync(message, 8);
+
+        // If no results, try to extract brand/category-specific keywords
+        if (!products.Any())
+        {
+            var cleaned = RemoveStopWords(message);
+            if (cleaned != message && !string.IsNullOrWhiteSpace(cleaned))
+            {
+                products = await _productService.SearchProductsAsync(cleaned, 8);
+            }
+        }
+
+        // Don't fall back to trending — only return actual search results
+        return products;
+    }
+
+    private static string RemoveStopWords(string msg)
+    {
+        var stopWords = new HashSet<string>
+        {
+            "tôi", "cho", "toi", "muốn", "muon", "cần", "can", "tìm", "tim", "mua",
+            "gợi", "goi", "ý", "y", "giới", "gioi", "thiệu", "thieu", "hãy", "hay",
+            "bạn", "ban", "có", "co", "không", "khong", "nào", "nao", "gì", "gi",
+            "được", "duoc", "xin", "vui", "lòng", "long", "ơi", "oi", "nhé", "nhe",
+            "đi", "di", "thử", "thu", "xem", "một", "mot", "vài", "vai", "những",
+            "nhung", "các", "cac", "của", "cua", "với", "voi", "và", "va",
+            "hoặc", "hoac", "trong", "ngoài", "ngoai", "đang", "dang", "sẽ", "se",
+            "đã", "da", "rồi", "roi", "lại", "lai", "nữa", "nua", "thêm", "them"
+        };
+
+        var words = msg.ToLower()
+            .Split(new[] { ' ', ',', '.', '!', '?', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => !stopWords.Contains(w) && w.Length >= 2);
+
+        return string.Join(" ", words);
+    }
+
+    // ── Extract price from message ──
+    private static (decimal? min, decimal? max) ExtractPriceRange(string message)
+    {
+        var lower = message.ToLower();
+        decimal? min = null, max = null;
+
+        // "dưới X triệu" / "under X triệu"
+        var underMatch = Regex.Match(lower, @"dưới\s+(\d+(?:[.,]\d+)?)\s*(triệu|tr|m)");
+        if (underMatch.Success)
+        {
+            max = decimal.Parse(underMatch.Groups[1].Value.Replace(",", "."),
+                System.Globalization.CultureInfo.InvariantCulture) * 1_000_000;
+        }
+
+        // "trên X triệu"
+        var overMatch = Regex.Match(lower, @"trên\s+(\d+(?:[.,]\d+)?)\s*(triệu|tr|m)");
+        if (overMatch.Success)
+        {
+            min = decimal.Parse(overMatch.Groups[1].Value.Replace(",", "."),
+                System.Globalization.CultureInfo.InvariantCulture) * 1_000_000;
+        }
+
+        // "từ X đến Y triệu" / "tầm X đến Y triệu"
+        var rangeMatch = Regex.Match(lower, @"(?:từ|tầm)\s+(\d+(?:[.,]\d+)?)\s*(?:đến|tới|-)\s*(\d+(?:[.,]\d+)?)\s*(triệu|tr|m)");
+        if (rangeMatch.Success)
+        {
+            min = decimal.Parse(rangeMatch.Groups[1].Value.Replace(",", "."),
+                System.Globalization.CultureInfo.InvariantCulture) * 1_000_000;
+            max = decimal.Parse(rangeMatch.Groups[2].Value.Replace(",", "."),
+                System.Globalization.CultureInfo.InvariantCulture) * 1_000_000;
+        }
+
+        // "tầm X triệu" (without range → ±30%)
+        var aroundMatch = Regex.Match(lower, @"tầm\s+(\d+(?:[.,]\d+)?)\s*(triệu|tr|m)");
+        if (aroundMatch.Success && !rangeMatch.Success)
+        {
+            var val = decimal.Parse(aroundMatch.Groups[1].Value.Replace(",", "."),
+                System.Globalization.CultureInfo.InvariantCulture) * 1_000_000;
+            min = val * 0.7m;
+            max = val * 1.3m;
+        }
+
+        // Also try "X nghìn" / "X k"
+        if (min == null && max == null)
+        {
+            var nghìnMatch = Regex.Match(lower, @"(\d+(?:[.,]\d+)?)\s*(nghìn|nghin|k)\b");
+            if (nghìnMatch.Success)
+            {
+                var val = decimal.Parse(nghìnMatch.Groups[1].Value.Replace(",", "."),
+                    System.Globalization.CultureInfo.InvariantCulture) * 1_000;
+                min = val * 0.7m;
+                max = val * 1.3m;
+            }
+        }
+
+        return (min, max);
+    }
+
+    // ── Order context for tracking ──
+    private async Task<string> GetOrderContextAsync(string message)
+    {
+        // Try to extract order code
+        var codeMatch = Regex.Match(message, @"(ORD-?\d+|[A-Z]{2,4}-?\d{4,})", RegexOptions.IgnoreCase);
+
+        if (codeMatch.Success)
+        {
+            var orderCode = codeMatch.Value.ToUpper();
+            var orders = await _unitOfWork.Orders
+                .FindAsync(o => o.OrderCode.ToUpper() == orderCode);
+            var order = orders.FirstOrDefault();
+
+            if (order != null)
+            {
+                var statusText = order.Status switch
+                {
+                    0 => "⏳ Chờ xử lý",
+                    1 => "✅ Đã xác nhận",
+                    2 => "🚚 Đang giao hàng",
+                    3 => "📦 Đã giao thành công",
+                    4 => "❌ Đã hủy",
+                    _ => "Không xác định"
+                };
+
+                return $@"THÔNG TIN ĐƠN HÀNG TÌM ĐƯỢC:
+- Mã đơn: {order.OrderCode}
+- Trạng thái: {statusText}
+- Tổng tiền: {order.Total:N0}đ
+- Thanh toán: {order.PaymentMethod} ({order.PaymentStatus})
+- Địa chỉ: {order.Address}
+- Ngày đặt: {order.CreatedAt:dd/MM/yyyy HH:mm}";
+            }
+        }
+
+        return "KHÔNG TÌM THẤY ĐƠN HÀNG. Yêu cầu khách cung cấp mã đơn hàng chính xác (ví dụ: ORD-12345).";
+    }
+
+    // ── Coupon context ──
+    private async Task<string> GetCouponContextAsync()
+    {
+        var now = DateTime.UtcNow;
+        var coupons = await _unitOfWork.Coupons
+            .FindAsync(c => !c.IsDeleted && c.DateStart <= now && c.DateExpired >= now
+                && c.Quantity > c.UsedCount && c.Status == 1);
+
+        var couponList = coupons.ToList();
+        if (!couponList.Any())
+            return "HIỆN KHÔNG CÓ MÃ GIẢM GIÁ NÀO ĐANG HOẠT ĐỘNG.";
+
+        var lines = couponList.Select(c =>
+        {
+            var discount = c.IsPercent ? $"{c.DiscountValue}%" : $"{c.DiscountValue:N0}đ";
+            return $"- {c.Code}: Giảm {discount} | Đơn tối thiểu: {c.MinimumOrderValue:N0}đ | " +
+                   $"Còn {c.Quantity - c.UsedCount} lượt | HSD: {c.DateExpired:dd/MM/yyyy}";
+        });
+
+        return $"MÃ GIẢM GIÁ ĐANG HOẠT ĐỘNG ({couponList.Count} mã):\n{string.Join("\n", lines)}";
+    }
+
+    // ── Build messages with rich context ──
+    private static List<GroqMessage> BuildMessagesWithContext(
+        ChatRequest request,
+        List<ChatProductInfo> products,
+        List<string> categories,
+        string extraContext,
+        ChatIntent intent)
+    {
+        var productContext = "";
+        if (products.Any())
+        {
+            var productLines = products.Select((p, i) =>
+                $"{i + 1}. **{p.Name}** — Giá: {p.Price:N0}đ | Brand: {p.BrandName} | " +
+                $"Danh mục: {p.CategoryName} | ⭐ {p.AverageScore:F1}/5 ({p.RatingCount} lượt) | " +
+                $"Đã bán: {p.SoldOut} | {(p.IsInStock ? "✅ Còn hàng" : "❌ Hết hàng")} | " +
+                $"Mô tả: {p.ShortDescription ?? "N/A"}"
+            );
+            productContext = $"\n\n📦 DỮ LIỆU SẢN PHẨM TỪ DATABASE ({products.Count} sản phẩm):\n{string.Join("\n", productLines)}";
+        }
+
+        var categoryInfo = categories.Any()
+            ? $"\n\n🏷️ DANH MỤC CÓ SẴN ({categories.Count}): {string.Join(", ", categories)}"
+            : "";
+
+        var extra = !string.IsNullOrEmpty(extraContext) ? $"\n\n📋 THÔNG TIN BỔ SUNG:\n{extraContext}" : "";
+
+        var systemPrompt = $@"Bạn là **ShopTTS AI** — trợ lý mua sắm thông minh cho nền tảng thương mại điện tử ShopTTS (Việt Nam).
+
+🎯 NHIỆM VỤ CHÍNH:
+- Tư vấn & giới thiệu sản phẩm từ dữ liệu thực (bên dưới)
+- So sánh sản phẩm chi tiết khi được yêu cầu
+- Hỗ trợ tra cứu đơn hàng, mã giảm giá
+- Tư vấn lựa chọn sản phẩm phù hợp nhu cầu & ngân sách
+
+📝 QUY TẮC BẮT BUỘC:
+1. CHỈ giới thiệu sản phẩm có trong DỮ LIỆU bên dưới. TUYỆT ĐỐI KHÔNG bịa đặt.
+2. Nếu KHÔNG có dữ liệu sản phẩm bên dưới → KHÔNG đề cập đến bất kỳ sản phẩm cụ thể nào. Chỉ trả lời câu hỏi và hướng dẫn khách.
+3. Sử dụng Markdown: **bold** tên SP, bullet points, tiêu đề nhỏ khi cần.
+4. Giá VNĐ dùng dấu chấm: 15.990.000đ
+5. Trả lời tiếng Việt, thân thiện, chuyên nghiệp, dùng emoji phù hợp.
+6. Khi có sản phẩm → giới thiệu rõ: tên, giá, brand, đánh giá, ưu điểm.
+7. Khi so sánh → tạo bảng hoặc list so sánh chi tiết.
+8. Không trả lời ngoài chủ đề mua sắm → nhẹ nhàng chuyển hướng.
+
+💡 CUỐI MỖI CÂU TRẢ LỜI, thêm 2-3 gợi ý câu hỏi tiếp theo dạng:
+[suggest]Gợi ý 1[/suggest]
+[suggest]Gợi ý 2[/suggest]
+[suggest]Gợi ý 3[/suggest]
+
+📞 HOTLINE: 1900-xxxx | 📧 support@shoptts.vn | ⏰ 8:00-22:00
+{productContext}{categoryInfo}{extra}";
+
+        var messages = new List<GroqMessage>
+        {
+            new() { Role = "system", Content = systemPrompt }
+        };
+
+        if (request.History?.Count > 0)
+        {
+            foreach (var msg in request.History.TakeLast(12))
+            {
+                messages.Add(new GroqMessage { Role = msg.Role, Content = msg.Content });
+            }
+        }
+
+        messages.Add(new GroqMessage { Role = "user", Content = request.Message });
+        return messages;
+    }
+
+    // ── Extract [suggest]...[/suggest] from AI response ──
+    private static (string cleanReply, string[] suggestions) ExtractSuggestions(string reply)
+    {
+        var suggestions = new List<string>();
+        var clean = Regex.Replace(reply, @"\[suggest\](.*?)\[/suggest\]", match =>
+        {
+            suggestions.Add(match.Groups[1].Value.Trim());
+            return "";
+        }, RegexOptions.Singleline);
+
+        return (clean.TrimEnd(), suggestions.ToArray());
+    }
+
+    // ── GROQ API call ──
+    private async Task<(GroqResponse? Response, string? ErrorCode)> CallGroqAsync(
+        string apiKey, List<GroqMessage> messages)
+    {
+        var client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Clear();
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+        client.Timeout = TimeSpan.FromSeconds(45);
+
+        var requestBody = new Dictionary<string, object>
+        {
+            ["model"] = MODEL,
+            ["messages"] = messages,
+            ["temperature"] = 0.7,
+            ["max_tokens"] = 2048,
+            ["stream"] = false
+        };
+
+        var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        });
+
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync(GROQ_API_URL, content);
+        var body = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("GROQ API error: {Status} - {Body}", response.StatusCode, body);
+            string? errorCode = null;
+            try
+            {
+                using var errDoc = JsonDocument.Parse(body);
+                errorCode = errDoc.RootElement.GetProperty("error").GetProperty("code").GetString();
+            }
+            catch { }
+            return (null, errorCode);
+        }
+
+        var result = JsonSerializer.Deserialize<GroqResponse>(body, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        return (result, null);
+    }
+
+    // ── SSE helper ──
+    private async Task WriteSSE(string eventType, string data)
+    {
+        await Response.WriteAsync($"event: {eventType}\ndata: {data}\n\n");
+        await Response.Body.FlushAsync();
+    }
+
+    // ── Map product DTO ──
+    private static object MapProductResponse(ChatProductInfo p) => new
+    {
+        p.Id,
+        p.Name,
+        p.Slug,
+        p.Price,
+        p.Image,
+        p.BrandName,
+        p.CategoryName,
+        p.ShopName,
+        p.AverageScore,
+        p.RatingCount,
+        p.SoldOut,
+        p.IsInStock
+    };
 }
 
-// ── Request / Response Models ──
+// ══════════════════════════════════════════
+//  Enums & Models
+// ══════════════════════════════════════════
+
+public enum ChatIntent
+{
+    General,
+    SearchProduct,
+    PriceRange,
+    Trending,
+    OrderTracking,
+    CouponInquiry,
+    CategoryBrowse,
+    Comparison
+}
 
 public class ChatRequest
 {
@@ -168,7 +843,7 @@ public class GroqMessage
     public string Role { get; set; } = string.Empty;
 
     [JsonPropertyName("content")]
-    public string Content { get; set; } = string.Empty;
+    public string? Content { get; set; }
 }
 
 public class GroqResponse
@@ -182,6 +857,9 @@ public class GroqResponse
 public class GroqChoice
 {
     public GroqMessageContent? Message { get; set; }
+
+    [JsonPropertyName("finish_reason")]
+    public string? FinishReason { get; set; }
 }
 
 public class GroqMessageContent

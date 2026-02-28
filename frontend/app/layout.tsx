@@ -55,8 +55,8 @@ export default function RootLayout({
               </CompareProvider>
             </WishlistProvider>
           </CartProvider>
+          <ChatBotWidget />
         </AuthProvider>
-        <ChatBotWidget />
       </body>
     </html>
   );
