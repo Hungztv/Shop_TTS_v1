@@ -241,6 +241,9 @@ builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 // Add Supabase Storage Service
 builder.Services.AddHttpClient<ISupabaseStorageService, SupabaseStorageService>();
 
+// Add HttpClientFactory for ChatBot (GROQ API)
+builder.Services.AddHttpClient();
+
 // Add Email Service
 builder.Services.Configure<ShopxBase.Application.Settings.EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));

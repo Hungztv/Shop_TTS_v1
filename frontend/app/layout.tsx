@@ -9,6 +9,7 @@ import { WishlistProvider } from "@/contexts/WishlistContext";
 import { CompareProvider } from "@/contexts/CompareContext";
 import CompareBar from "@/components/ui/CompareBar";
 import { Toaster } from "sonner";
+import ChatBotWidget from "@/components/ChatBotWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,6 +56,7 @@ export default function RootLayout({
             </WishlistProvider>
           </CartProvider>
         </AuthProvider>
+        <ChatBotWidget />
       </body>
     </html>
   );
