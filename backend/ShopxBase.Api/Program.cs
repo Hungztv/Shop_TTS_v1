@@ -313,6 +313,7 @@ builder.Services.AddCors(options =>
 // Add logging
 builder.Services.AddLogging();
 
+builder.Services.AddHealthChecks();
 var app = builder.Build();
 
 // Seed roles
@@ -351,6 +352,8 @@ app.UseMiddleware<ShopxBase.Api.Middleware.AddRolesFromDatabaseMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 // 11. Seed roles and admin user
 using (var scope = app.Services.CreateScope())
